@@ -2,7 +2,8 @@
  PROJETO: Chat de IA (Gemini) - Web App / PWA
 ============================================================
 
-Um aplicativo web progressivo (PWA) de chat com inteligência artificial, projetado para rodar diretamente no navegador, utilizar a API do Gemini com total flexibilidade dos modelos gratuitos e gerenciar memórias persistentes de forma inteligente no navegador (IndexedDB).
+Um aplicativo web progressivo (PWA) de chat com inteligência artificial com sistema de memória. 
+Projetado para rodar diretamente no navegador ou ser instalado no Celular via Navegador Chrome, utilizar a API do Gemini com total flexibilidade dos modelos gratuitos e gerenciar memórias persistentes de forma inteligente no navegador (IndexedDB).
 
 --- 🚀 CARACTERÍSTICAS PRINCIPAIS ---
 
@@ -39,15 +40,20 @@ Um aplicativo web progressivo (PWA) de chat com inteligência artificial, projet
 
 Como este é um aplicativo puramente client-side (HTML, CSS e JavaScript puro, sem backend dedicado), você pode executá-lo de duas formas:
 
-Opção A: Uso Direto
+Opção A: Pelo link: https://app-viva-ia.vercel.app
+1. Abra o link do projeto no navegador do PC ou do Celular (Google Chrome).
+2. No PC: cole sua chave API Gemini e comece a conversar.
+3. No Celular: clique em instalar, para instalar o App; Abra, cole sua chave API Gemini e comece a conversar.
+
+Uso Direto
 1. Baixe ou clone este repositório.
 2. Certifique-se de que os três arquivos (`index.html`, `manifest.json`, `sw.js`) e os ícones PNG estejam na mesma pasta.
 3. Dê dois cliques em `index.html` para abrir diretamente no seu navegador (Firefox, Chrome, Edge, etc.).
 
-Opção B: Pelo link
-1. Abra o link do projeto no navegador do PC ou do Celular (Google Chrome).
-2. No PC: cole sua chave API Gemini e comece a conversar.
-3. No Celular: clique em instalar, para instalar o App; Abra, cole sua chave API Gemini e comece a conversar.
+Opção B: Uso Direto
+1. Baixe ou clone este repositório.
+2. Certifique-se de que os três arquivos (`index.html`, `manifest.json`, `sw.js`) e os ícones PNG estejam na mesma pasta.
+3. Dê dois cliques em `index.html` para abrir diretamente no seu navegador (Firefox, Chrome, Edge, etc.).
  
 --- 🔑 PRIMEIROS PASSOS APÓS ABRIR O APP ---
 
