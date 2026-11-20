@@ -91,7 +91,7 @@ What you do need:
 
 ### Option 1 — Use the Vercel website (easiest)
 
-1. Open **https://YOUR-APP.vercel.app** in Google Chrome on your PC or phone.
+1. Open **https://app-viva-ia.vercel.app** in Google Chrome on your PC or phone.
 2. Phone: tap **Install app** (or Chrome menu ⋮ → *Install app* / *Add to Home screen*). PC: click the install icon in the address bar.
 3. Open the app, add your API key (see *First steps*), and start chatting.
 
