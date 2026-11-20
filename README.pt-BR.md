@@ -38,6 +38,7 @@ Um aplicativo web progressivo (PWA) para conversar com inteligência artificial.
 - Word (`.docx`) e OpenDocument (`.odt`): o texto é extraído no navegador.
 - Arquivos de texto: `.txt`, `.md`, `.csv`, `.json`, `.html`, código-fonte e similares (primeiros 300.000 caracteres).
 - O conteúdo completo dos anexos só é enviado nas 2 últimas mensagens que têm anexo; as anteriores aparecem para a IA apenas como nome de arquivo.
+- **Controle de armazenamento:** os anexos ficam no navegador até você apagar a conversa. Em ⚙ dá para ver quanto espaço usam. **Liberar espaço** remove o conteúdo dos anexos antigos (os 2 mais recentes de cada conversa são mantidos). A **limpeza automática** faz o mesmo sozinha para anexos com mais de 7, 30 ou 90 dias (desligada por padrão). O texto das conversas e as miniaturas das imagens sempre ficam; a IA só deixa de conseguir ler os arquivos removidos.
 
 **Interface e PWA**
 - Interface em inglês (padrão) e português (BR).
@@ -93,7 +94,7 @@ O que você precisa ter:
 
 ### Opção 1 — Usar o site na Vercel (mais fácil)
 
-1. Abra **https://app-viva-ia.vercel.app** no Google Chrome, no PC ou no celular.
+1. Abra **https://SEU-APP.vercel.app** no Google Chrome, no PC ou no celular.
 2. Celular: toque em **Instalar app** (ou menu ⋮ do Chrome → *Instalar app* / *Adicionar à tela inicial*). PC: clique no ícone de instalar na barra de endereço.
 3. Abra o app, coloque sua chave de API (veja *Primeiros passos*) e comece a conversar.
 

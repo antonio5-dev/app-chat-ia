@@ -337,6 +337,12 @@
         <label class="cfg-linha"><input type="checkbox" id="chk-autoenviar"><span data-i="autoSend"></span></label>
         <label class="cfg-linha"><input type="checkbox" id="chk-maos"><span data-i="handsFree"></span></label>
 
+        <div class="rotulo" data-i="storage"></div>
+        <div class="rotulo" id="info-armazenamento" style="color:#d1d5db;"></div>
+        <button class="secondary" id="btn-liberar" data-i="freeSpace"></button>
+        <div class="rotulo" data-i="retention"></div>
+        <select id="sel-ret"><option value="0" data-i="retNever"></option><option value="7" data-i="ret7"></option><option value="30" data-i="ret30"></option><option value="90" data-i="ret90"></option></select>
+
         <div style="display: flex; gap: 8px; width: 100%;">
             <button class="secondary" id="btn-abrir-memorias" style="flex:1;" data-i="memories"></button>
             <button class="secondary" id="btn-editar-personalidade" style="flex:1;" data-i="personality"></button>
@@ -387,7 +393,7 @@
     // ==========================================
     const I18N = {
         en: {
-            install: 'Install app', respLang: 'AI reply language', respAuto: 'Same as my message', queue: 'Not yet summarized', queueHint: "Deleting here only keeps a message out of memory; it stays in the chat.", queueWhere: 'Manage them in the ☰ menu.', selAll: 'Select all', delSel: 'Delete selected', delAll: 'Delete all', delQueueOne: 'Remove this message from the memory queue? It stays in the chat.', delSelConfirm: 'Delete {n} selected item(s)?', delAllConfirm: 'Delete ALL items in this list?', you: 'You', newChat: '+ New chat', defaultTitle: 'New chat', uiLang: 'Interface language',
+            install: 'Install app', respLang: 'AI reply language', respAuto: 'Same as my message', queue: 'Not yet summarized', queueHint: "Deleting here only keeps a message out of memory; it stays in the chat.", queueWhere: 'Manage them in the ☰ menu.', selAll: 'Select all', delSel: 'Delete selected', delAll: 'Delete all', delQueueOne: 'Remove this message from the memory queue? It stays in the chat.', delSelConfirm: 'Delete {n} selected item(s)?', delAllConfirm: 'Delete ALL items in this list?', you: 'You', storage: 'Attachment storage', stFiles: 'Attachments stored', stBrowser: 'Browser total', freeSpace: 'Free up space (old attachments)', retention: 'Auto-clean attachments older than', retNever: 'Never', ret7: '7 days', ret30: '30 days', ret90: '90 days', cleanNone: 'Nothing to clean: only the latest attachments of each chat are left.', cleanConfirm: 'Remove the contents of {n} old attachment(s) (about {s})? Chat text and image thumbnails stay, but the AI will no longer be able to read these files. The 2 latest attachments of each chat are kept.', retConfirm: 'Remove the contents of {n} attachment(s) older than {d} days (about {s}) now? From now on this runs automatically.', cleanDone: 'Done.', newChat: '+ New chat', defaultTitle: 'New chat', uiLang: 'Interface language',
             temperature: 'Temperature', context: 'Context (previous messages)', apiKeyPh: 'Paste your Gemini API key here',
             saveKey: 'Save key', keySaved: 'API key saved!', voiceLang: 'Voice language (mic + reading)', voice: 'Voice',
             defaultVoice: 'Default', speed: 'Speech speed', autoRead: 'Read replies aloud',
@@ -406,7 +412,7 @@
             importDone: 'Import complete!', saved: 'Saved!', sample: 'This is my voice at this speed.'
         },
         pt: {
-            install: 'Instalar app', respLang: 'Idioma das respostas da IA', respAuto: 'Igual à minha mensagem', queue: 'Ainda não resumidas', queueHint: 'Apagar aqui só tira a mensagem da memória; ela continua na conversa.', queueWhere: 'Gerencie no menu ☰.', selAll: 'Selecionar todas', delSel: 'Apagar selecionadas', delAll: 'Apagar todas', delQueueOne: 'Tirar esta mensagem da fila de memória? Ela continua na conversa.', delSelConfirm: 'Apagar {n} item(ns) selecionado(s)?', delAllConfirm: 'Apagar TODOS os itens desta lista?', you: 'Você', newChat: '+ Nova conversa', defaultTitle: 'Nova conversa', uiLang: 'Idioma da interface',
+            install: 'Instalar app', respLang: 'Idioma das respostas da IA', respAuto: 'Igual à minha mensagem', queue: 'Ainda não resumidas', queueHint: 'Apagar aqui só tira a mensagem da memória; ela continua na conversa.', queueWhere: 'Gerencie no menu ☰.', selAll: 'Selecionar todas', delSel: 'Apagar selecionadas', delAll: 'Apagar todas', delQueueOne: 'Tirar esta mensagem da fila de memória? Ela continua na conversa.', delSelConfirm: 'Apagar {n} item(ns) selecionado(s)?', delAllConfirm: 'Apagar TODOS os itens desta lista?', you: 'Você', storage: 'Armazenamento de anexos', stFiles: 'Anexos guardados', stBrowser: 'Total no navegador', freeSpace: 'Liberar espaço (anexos antigos)', retention: 'Limpar anexos automaticamente após', retNever: 'Nunca', ret7: '7 dias', ret30: '30 dias', ret90: '90 dias', cleanNone: 'Nada para limpar: só restam os anexos mais recentes de cada conversa.', cleanConfirm: 'Remover o conteúdo de {n} anexo(s) antigo(s) (cerca de {s})? O texto das conversas e as miniaturas das imagens ficam, mas a IA não poderá mais ler esses arquivos. Os 2 anexos mais recentes de cada conversa são mantidos.', retConfirm: 'Remover agora o conteúdo de {n} anexo(s) com mais de {d} dias (cerca de {s})? A partir de agora isso roda automaticamente.', cleanDone: 'Pronto.', newChat: '+ Nova conversa', defaultTitle: 'Nova conversa', uiLang: 'Idioma da interface',
             temperature: 'Temperatura', context: 'Contexto (mensagens anteriores)', apiKeyPh: 'Cole sua API Key do Gemini aqui',
             saveKey: 'Salvar chave', keySaved: 'API Key salva!', voiceLang: 'Idioma da voz (microfone + leitura)', voice: 'Voz',
             defaultVoice: 'Padrão', speed: 'Velocidade da fala', autoRead: 'Ler respostas em voz alta',
@@ -456,6 +462,7 @@
     let AUTOENVIAR = localStorage.getItem('chat_autoenviar') !== '0';
     let MAOS = false;
     let FILA_ABERTA = localStorage.getItem('chat_fila_aberta') === '1';
+    let RET_DIAS = parseInt(localStorage.getItem('chat_ret') || '0', 10) || 0;   // limpeza automática de anexos (dias; 0 = nunca)
     let RESP_LANG = localStorage.getItem('chat_resp') || 'auto';   // idioma das respostas da IA: auto | en | pt
 
     const DB_NAME = 'viva_memoria_db';
@@ -568,6 +575,67 @@
     const dbDelete = (s, k) => rq(db.transaction(s, 'readwrite').objectStore(s).delete(k));
     const limparStore = (s) => rq(db.transaction(s, 'readwrite').objectStore(s).clear());
     const porRecente = (a, b) => b.atualizada.localeCompare(a.atualizada);
+
+    // ==========================================
+    // ARMAZENAMENTO DE ANEXOS (medidor + limpeza manual/automática)
+    // Limpar = apaga só o CONTEÚDO do arquivo; texto da conversa e miniaturas ficam.
+    // ==========================================
+    const tamRec = (r) => (r.data ? Math.round(r.data.length * 0.75) : 0) + (r.texto ? r.texto.length : 0);
+    const fmt = (b) => b >= 1e9 ? (b / 1e9).toFixed(1) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB';
+    async function tamMeta(a) {
+        if (a.tam != null) return a.tam;
+        const r = await dbGet('anexos', a.id);
+        return r && !r.limpo ? tamRec(r) : 0;
+    }
+
+    async function renderArmazenamento() {
+        let n = 0, b = 0;
+        for (const m of await dbGetAll('mensagens')) {
+            for (const a of m.anexos || []) { if (a.limpo) continue; n++; b += await tamMeta(a); }
+        }
+        let extra = '';
+        if (navigator.storage && navigator.storage.estimate) {
+            try { const e = await navigator.storage.estimate(); extra = ` · ${t('stBrowser')}: ${fmt(e.usage || 0)} / ${fmt(e.quota || 0)}`; } catch (e) { /* ignora */ }
+        }
+        $('info-armazenamento').textContent = `${t('stFiles')}: ${n} (${fmt(b)})${extra}`;
+    }
+    function atualizarArmazenamento() { if ($('painel-config').classList.contains('open')) renderArmazenamento(); }
+
+    // proteger: mantém os 2 anexos mais recentes de cada conversa. dias: só os mais velhos que isso (0 = qualquer idade).
+    async function candidatosLimpeza({ dias = 0, proteger = false } = {}) {
+        const msgs = (await dbGetAll('mensagens')).sort((a, b) => a.id - b.id);
+        const prot = new Set();
+        if (proteger) {
+            const porConv = {};
+            for (const m of msgs) if ((m.anexos || []).length) (porConv[m.conversaId] = porConv[m.conversaId] || []).push(m);
+            for (const l of Object.values(porConv)) for (const m of l.slice(-2)) m.anexos.forEach(a => prot.add(a.id));
+        }
+        const limite = Date.now() - dias * 864e5;
+        const ids = []; let bytes = 0;
+        for (const m of msgs) {
+            const ts = new Date(m.timestamp).getTime();
+            if (dias && (isNaN(ts) || ts > limite)) continue;
+            for (const a of m.anexos || []) {
+                if (a.limpo || prot.has(a.id)) continue;
+                ids.push(a.id); bytes += await tamMeta(a);
+            }
+        }
+        return { ids, bytes };
+    }
+
+    async function limparConteudo(ids) {
+        const set = new Set(ids);
+        if (!set.size) return;
+        for (const id of set) {
+            const r = await dbGet('anexos', id);
+            if (r && !r.limpo) await dbPut('anexos', { id: r.id, tipo: r.tipo, nome: r.nome, mime: r.mime, limpo: true });
+        }
+        for (const m of await dbGetAll('mensagens')) {
+            let mud = false;
+            for (const a of m.anexos || []) if (set.has(a.id) && !a.limpo) { a.limpo = true; mud = true; }
+            if (mud) await dbPut('mensagens', m);
+        }
+    }
 
     // Conversa antiga (buffer de 20 mensagens da versão 1) -> vira uma conversa
     async function importarRecentes(lista) {
@@ -762,7 +830,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             await dbDelete('mensagens', m.id);
         }
         await dbDelete('conversas', id);
-        renderFila();
+        renderFila(); atualizarArmazenamento();
         if (id === convAtual) {
             const cs = (await dbGetAll('conversas')).sort(porRecente);
             if (cs.length) await abrirConversa(cs[0].id); else await novaConversa();
@@ -1021,8 +1089,8 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             const role = m.role === 'user' ? 'user' : 'model', parts = [];
             if (m.texto) parts.push({ text: m.texto });
             for (const a of m.anexos || []) {
-                const r = completos.includes(m.id) ? await dbGet('anexos', a.id) : null;
-                if (!r) parts.push({ text: `[attachment: ${a.nome}]` });
+                const r = (completos.includes(m.id) && !a.limpo) ? await dbGet('anexos', a.id) : null;
+                if (!r || r.limpo) parts.push({ text: `[attachment: ${a.nome}${a.limpo ? ' (content no longer available)' : ''}]` });
                 else if (r.texto != null) parts.push({ text: `--- FILE: ${r.nome} ---\n${r.texto}\n--- END FILE ---` });
                 else parts.push({ inline_data: { mime_type: r.mime, data: r.data } });
             }
@@ -1048,7 +1116,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             const meta = [];
             for (const a of anex) {
                 const id = await dbAdd('anexos', a.rec);
-                meta.push({ id, tipo: a.rec.tipo, nome: a.rec.nome, thumb: a.thumb });
+                meta.push({ id, tipo: a.rec.tipo, nome: a.rec.nome, thumb: a.thumb, tam: tamRec(a.rec) });
             }
             await dbAdd('mensagens', { conversaId: convId, role: 'user', texto, anexos: meta, timestamp: new Date().toISOString(), processada: 0 });
             renderFila();
@@ -1197,7 +1265,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
     // ==========================================
     $('btn-enviar').onclick = enviarMensagem;
     $('user-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') enviarMensagem(); });
-    $('btn-config').onclick = () => $('painel-config').classList.toggle('open');
+    $('btn-config').onclick = () => { if ($('painel-config').classList.toggle('open')) renderArmazenamento(); };
     $('btn-menu').onclick = () => { renderLista(); renderFila(); $('drawer').classList.add('open'); $('overlay').classList.add('open'); };
     $('overlay').onclick = fecharDrawer;
     $('btn-nova').onclick = async () => {
@@ -1232,6 +1300,26 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
         localStorage.setItem('chat_lang', LANG);
         if (!localStorage.getItem('chat_voz_lang')) { VOZ_LANG = LANG === 'pt' ? 'pt-BR' : 'en-US'; $('sel-vozlang').value = VOZ_LANG; }
         aplicarIdioma(); preencherVozes(); renderLista();
+    };
+    $('btn-liberar').onclick = async () => {
+        const c = await candidatosLimpeza({ proteger: true });
+        if (!c.ids.length) { alert(t('cleanNone')); return; }
+        if (!confirm(t('cleanConfirm').replace('{n}', c.ids.length).replace('{s}', fmt(c.bytes)))) return;
+        await limparConteudo(c.ids);
+        await renderArmazenamento();
+        alert(t('cleanDone'));
+    };
+    $('sel-ret').onchange = async (e) => {
+        const d = parseInt(e.target.value, 10) || 0;
+        if (d) {
+            const c = await candidatosLimpeza({ dias: d });
+            if (c.ids.length) {
+                if (!confirm(t('retConfirm').replace('{n}', c.ids.length).replace('{d}', d).replace('{s}', fmt(c.bytes)))) { e.target.value = String(RET_DIAS); return; }
+                await limparConteudo(c.ids);
+            }
+        }
+        RET_DIAS = d; localStorage.setItem('chat_ret', String(d));
+        renderArmazenamento();
     };
     $('sel-resp').onchange = (e) => { RESP_LANG = e.target.value; localStorage.setItem('chat_resp', RESP_LANG); };
     $('sel-vozlang').onchange = (e) => {
@@ -1300,7 +1388,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             await limparStore('memoria_recente');
             localStorage.setItem('chat_migrado', '1');
         }
-        $('sel-lang').value = LANG; $('sel-resp').value = RESP_LANG;
+        $('sel-lang').value = LANG; $('sel-resp').value = RESP_LANG; $('sel-ret').value = String(RET_DIAS);
         $('sel-vozlang').innerHTML = VOZES_LANG.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
         $('sel-vozlang').value = VOZ_LANG;
         $('api-key-input').value = API_KEY;
@@ -1312,6 +1400,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
         aplicarIdioma();
         if ('speechSynthesis' in window) { speechSynthesis.onvoiceschanged = preencherVozes; preencherVozes(); }
 
+        if (RET_DIAS) { try { await limparConteudo((await candidatosLimpeza({ dias: RET_DIAS })).ids); } catch (e) { console.error(e); } }
         const cs = (await dbGetAll('conversas')).sort(porRecente);
         const salva = Number(localStorage.getItem('chat_conv'));
         if (!cs.length) await novaConversa();

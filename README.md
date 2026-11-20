@@ -38,6 +38,7 @@ A progressive web app (PWA) for chatting with AI. It runs entirely in the browse
 - Word (`.docx`) and OpenDocument (`.odt`): text is extracted in the browser.
 - Text files: `.txt`, `.md`, `.csv`, `.json`, `.html`, source code and similar (first 300,000 characters).
 - Full attachment contents are sent only for the last 2 messages that have attachments; older ones appear to the AI as a file name.
+- **Storage control:** attachments stay in your browser until you delete the chat. ⚙ shows how much space they use. **Free up space** removes the contents of old attachments (the 2 latest of each chat are kept). **Auto-clean** can do the same automatically for attachments older than 7, 30 or 90 days (off by default). Chat text and image thumbnails always stay; the AI just can no longer read the removed files.
 
 **Interface and PWA**
 - English (default) and Portuguese (BR) interface.
@@ -91,7 +92,7 @@ What you do need:
 
 ### Option 1 — Use the Vercel website (easiest)
 
-1. Open **https://app-viva-ia.vercel.app** in Google Chrome on your PC or phone.
+1. Open **https://YOUR-APP.vercel.app** in Google Chrome on your PC or phone.
 2. Phone: tap **Install app** (or Chrome menu ⋮ → *Install app* / *Add to Home screen*). PC: click the install icon in the address bar.
 3. Open the app, add your API key (see *First steps*), and start chatting.
 
