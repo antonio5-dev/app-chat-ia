@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chat de IA (Gemini)</title>
+    <title>AI Chat (Gemini)</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f0f0f">
-    <meta name="description" content="Chat de IA com memória">
+    <meta name="description" content="AI chat with persistent memory">
     <link rel="apple-touch-icon" href="icon-512.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -242,78 +242,186 @@
             .header-controls { padding: 8px; }
             .app-header h1 { font-size: 19px; }
         }
+        /* ===== v2: layout de chat, conversas, anexos, voz ===== */
+        html, body { overflow: hidden; }
+        .app-container { height: 100dvh; min-height: 0; padding: 8px; gap: 8px; }
+        .app-header { justify-content: space-between; padding: 8px; }
+        .app-header h1 { flex: 1; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .icon-btn { width: auto; padding: 8px 14px; background: #2a2a2a; border: 1px solid #444; }
+        .icon-btn.on { background: #ef4444; border-color: #ef4444; }
+        .btn-instalar { padding: 6px 10px; }
+        #painel-config { display: none; max-height: 55vh; overflow-y: auto; }
+        #painel-config.open { display: flex; }
+        .chat-area { min-height: 0; }
+        .input-area .icon-btn { padding: 10px 14px; }
+        .message .att { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .message .att img { max-height: 110px; max-width: 100%; border-radius: 8px; }
+        .chip { background: rgba(255,255,255,.12); border-radius: 8px; padding: 4px 8px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; max-width: 100%; word-break: break-all; }
+        .chip button { width: auto; padding: 0 6px; background: none; color: #fca5a5; font-size: 16px; }
+        .spk { width: auto; padding: 2px 8px; margin-left: 8px; font-size: 13px; background: #4b5563; vertical-align: middle; }
+        #anexos-pend { display: flex; flex-wrap: wrap; gap: 6px; }
+        #anexos-pend:empty { display: none; }
+        #drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(85vw, 320px); background: #1a1a1a; border-right: 1px solid #333; z-index: 900; transform: translateX(-100%); transition: transform .2s; display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+        #drawer.open { transform: none; }
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 800; }
+        #overlay.open { display: block; }
+        #lista-conv { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .conv { display: flex; align-items: center; gap: 6px; padding: 8px; border-radius: 8px; background: #2a2a2a; border: 1px solid #333; cursor: pointer; }
+        .conv.ativa { border-color: #3b82f6; }
+        .conv-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .conv button { width: auto; padding: 4px 8px; font-size: 14px; }
+        .cfg-linha { display: flex; align-items: center; gap: 8px; font-size: 15px; color: #d1d5db; width: 100%; }
+        .cfg-linha input[type=checkbox] { width: 20px; height: 20px; padding: 0; flex-shrink: 0; accent-color: #3b82f6; }
+        .rotulo { font-size: 13px; color: #9ca3af; width: 100%; }
     </style>
 </head>
+
 <body>
+
+<div id="overlay"></div>
+<div id="drawer">
+    <button id="btn-nova" data-i="newChat"></button>
+    <div id="lista-conv"></div>
+</div>
 
 <div class="app-container">
     <div class="app-header">
-        <h1>Chat de IA (Gemini)</h1>
-        <button class="btn-instalar" id="btn-instalar">Instalar app</button>
+        <button class="icon-btn" id="btn-menu">☰</button>
+        <h1 id="titulo-conv"></h1>
+        <button class="btn-instalar" id="btn-instalar" data-i="install"></button>
+        <button class="icon-btn" id="btn-config">⚙</button>
     </div>
 
-    <div class="header-controls">
+    <div class="header-controls" id="painel-config">
+        <div class="rotulo" data-i="uiLang"></div>
+        <select id="sel-lang"><option value="en">English</option><option value="pt">Português</option></select>
         <select id="model-select">
             <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
             <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
             <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
         </select>
         <div class="controle-slider">
-            <div class="linha"><span>Temperatura</span><span class="valor" id="val-temperatura">1.0</span></div>
+            <div class="linha"><span data-i="temperature"></span><span class="valor" id="val-temperatura">1.0</span></div>
             <input type="range" id="rng-temperatura" min="0" max="2" step="0.1" value="1">
         </div>
         <div class="controle-slider">
-            <div class="linha"><span>Contexto (mensagens anteriores)</span><span class="valor" id="val-contexto">10</span></div>
-            <input type="range" id="rng-contexto" min="0" max="10" step="1" value="10">
+            <div class="linha"><span data-i="context"></span><span class="valor" id="val-contexto">10</span></div>
+            <input type="range" id="rng-contexto" min="0" max="20" step="1" value="10">
         </div>
-        <input type="password" id="api-key-input" placeholder="Cole sua API Key do Gemini aqui">
-        <button class="secondary" id="btn-salvar-chave">Salvar Chave</button>
+        <input type="password" id="api-key-input" data-ph="apiKeyPh">
+        <button class="secondary" id="btn-salvar-chave" data-i="saveKey"></button>
+
+        <div class="rotulo" data-i="voiceLang"></div>
+        <select id="sel-vozlang"></select>
+        <div class="rotulo" data-i="voice"></div>
+        <select id="sel-voz"></select>
+        <div class="controle-slider">
+            <div class="linha"><span data-i="speed"></span><span class="valor" id="val-vel">1.0x</span></div>
+            <input type="range" id="rng-vel" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <label class="cfg-linha"><input type="checkbox" id="chk-autoler"><span data-i="autoRead"></span></label>
+        <label class="cfg-linha"><input type="checkbox" id="chk-autoenviar"><span data-i="autoSend"></span></label>
+        <label class="cfg-linha"><input type="checkbox" id="chk-maos"><span data-i="handsFree"></span></label>
+
         <div style="display: flex; gap: 8px; width: 100%;">
-            <button class="secondary" id="btn-abrir-memorias" style="flex:1;">Memórias</button>
-            <button class="secondary" id="btn-editar-personalidade" style="flex:1;">Personalidade</button>
+            <button class="secondary" id="btn-abrir-memorias" style="flex:1;" data-i="memories"></button>
+            <button class="secondary" id="btn-editar-personalidade" style="flex:1;" data-i="personality"></button>
         </div>
         <div style="display: flex; gap: 8px; width: 100%;">
-            <button class="secondary" id="btn-exportar" style="flex:1;">Exportar</button>
-            <button class="secondary" id="btn-importar" style="flex:1;">Importar</button>
+            <button class="secondary" id="btn-exportar" style="flex:1;" data-i="exp"></button>
+            <button class="secondary" id="btn-importar" style="flex:1;" data-i="imp"></button>
             <input type="file" id="input-importar" accept=".json" style="display:none;">
         </div>
     </div>
 
-    <div class="chat-area" id="chat-container">
-        <div class="message viva">Configure sua API Key acima e comece a conversar.</div>
-    </div>
+    <div class="chat-area" id="chat-container"></div>
+    <div id="anexos-pend"></div>
 
     <div class="input-area">
-        <input type="text" id="user-input" placeholder="Digite sua mensagem...">
-        <button id="btn-enviar">Enviar</button>
+        <button class="icon-btn" id="btn-anexo">📎</button>
+        <input type="file" id="input-arquivo" multiple style="display:none;"
+               accept="image/*,application/pdf,text/*,.docx,.odt,.md,.csv,.tsv,.json,.xml,.yml,.yaml,.log,.ini,.sql,.js,.ts,.py,.java,.c,.cpp,.h,.cs,.go,.rs,.rb,.php,.sh,.tex">
+        <input type="text" id="user-input" data-ph="inputPh">
+        <button class="icon-btn" id="btn-mic">🎤</button>
+        <button id="btn-enviar" data-i="send"></button>
     </div>
 </div>
 
 <div class="modal" id="modal-memorias">
     <div class="modal-content">
-        <h2>Memórias</h2>
-        <button class="danger" id="btn-apagar-sel" disabled>Apagar selecionadas (0)</button>
+        <h2 data-i="memories"></h2>
         <div class="modal-list" id="lista-memorias"></div>
-        <button class="secondary" id="btn-fechar-memorias">Fechar</button>
+        <button class="secondary" id="btn-fechar-memorias" data-i="close"></button>
     </div>
 </div>
 
 <div class="modal" id="modal-personalidade">
     <div class="modal-content">
-        <h2>Personalidade</h2>
+        <h2 data-i="personality"></h2>
         <textarea id="texto-personalidade" rows="8"></textarea>
+        <button class="secondary" id="btn-restaurar-personalidade" data-i="restore"></button>
         <div style="display: flex; gap: 8px;">
-            <button id="btn-salvar-personalidade" style="flex:1;">Salvar</button>
-            <button class="secondary" id="btn-fechar-personalidade" style="flex:1;">Fechar</button>
+            <button id="btn-salvar-personalidade" style="flex:1;" data-i="save"></button>
+            <button class="secondary" id="btn-fechar-personalidade" style="flex:1;" data-i="close"></button>
         </div>
     </div>
 </div>
 
 <script>
     // ==========================================
+    // IDIOMA (EN padrão / PT)
+    // ==========================================
+    const I18N = {
+        en: {
+            install: 'Install app', newChat: '+ New chat', defaultTitle: 'New chat', uiLang: 'Interface language',
+            temperature: 'Temperature', context: 'Context (previous messages)', apiKeyPh: 'Paste your Gemini API key here',
+            saveKey: 'Save key', keySaved: 'API key saved!', voiceLang: 'Voice language (mic + reading)', voice: 'Voice',
+            defaultVoice: 'Default', speed: 'Speech speed', autoRead: 'Read replies aloud',
+            autoSend: 'Send automatically after speaking', handsFree: 'Hands-free mode (listen → reply → speak → listen)',
+            memories: 'Memories', personality: 'Personality', exp: 'Export', imp: 'Import', inputPh: 'Type a message...',
+            send: 'Send', welcome: 'Add your API key in ⚙ settings, then start chatting.', close: 'Close', save: 'Save',
+            restore: 'Restore default', none: 'None.', del: 'Delete', delMem: 'Delete this memory?', loading: 'Loading...',
+            permanent: 'Permanent', profile: 'Profile', renamePrompt: 'Rename chat:',
+            delChat: 'Delete this chat and its messages? Memories already extracted are kept.',
+            imported: 'Imported chat', error: 'Error: ', noKey: 'API key not set.', empty: 'The response was empty.',
+            memFail: "Couldn't organize memories right now. I'll try again on the next message.",
+            noSR: 'Speech recognition is not supported in this browser.', micDenied: 'Microphone access was denied.',
+            unsupported: 'Unsupported, empty or binary file.', tooBig: 'PDF too large (max ~14 MB).',
+            truncated: 'Text cut to the first 300,000 characters: ', exported: 'Backup exported! Check your Downloads folder.',
+            invalid: 'Invalid file: nothing to import.', importConfirm: 'Import this backup? This REPLACES all current chats and memories.',
+            importDone: 'Import complete!', saved: 'Saved!', sample: 'This is my voice at this speed.'
+        },
+        pt: {
+            install: 'Instalar app', newChat: '+ Nova conversa', defaultTitle: 'Nova conversa', uiLang: 'Idioma da interface',
+            temperature: 'Temperatura', context: 'Contexto (mensagens anteriores)', apiKeyPh: 'Cole sua API Key do Gemini aqui',
+            saveKey: 'Salvar chave', keySaved: 'API Key salva!', voiceLang: 'Idioma da voz (microfone + leitura)', voice: 'Voz',
+            defaultVoice: 'Padrão', speed: 'Velocidade da fala', autoRead: 'Ler respostas em voz alta',
+            autoSend: 'Enviar automaticamente após falar', handsFree: 'Modo mãos-livres (ouve → responde → fala → ouve)',
+            memories: 'Memórias', personality: 'Personalidade', exp: 'Exportar', imp: 'Importar', inputPh: 'Digite sua mensagem...',
+            send: 'Enviar', welcome: 'Coloque sua API Key em ⚙ e comece a conversar.', close: 'Fechar', save: 'Salvar',
+            restore: 'Restaurar padrão', none: 'Nenhuma.', del: 'Apagar', delMem: 'Apagar esta memória?', loading: 'Carregando...',
+            permanent: 'Permanentes', profile: 'Perfil', renamePrompt: 'Renomear conversa:',
+            delChat: 'Apagar esta conversa e suas mensagens? As memórias já extraídas são mantidas.',
+            imported: 'Conversa importada', error: 'Erro: ', noKey: 'API Key não configurada.', empty: 'A resposta veio vazia.',
+            memFail: 'Não consegui organizar as memórias agora. Tento de novo na próxima mensagem.',
+            noSR: 'Reconhecimento de voz não é suportado neste navegador.', micDenied: 'Acesso ao microfone negado.',
+            unsupported: 'Arquivo não suportado, vazio ou binário.', tooBig: 'PDF grande demais (máx. ~14 MB).',
+            truncated: 'Texto cortado nos primeiros 300.000 caracteres: ', exported: 'Backup exportado! Veja a pasta Downloads.',
+            invalid: 'Arquivo inválido: nada para importar.', importConfirm: 'Importar este backup? Isso SUBSTITUI todas as conversas e memórias atuais.',
+            importDone: 'Importação concluída!', saved: 'Salvo!', sample: 'Esta é a minha voz nesta velocidade.'
+        }
+    };
+    let LANG = localStorage.getItem('chat_lang') === 'pt' ? 'pt' : 'en';
+    const t = (k) => I18N[LANG][k] ?? I18N.en[k] ?? k;
+    const $ = (id) => document.getElementById(id);
+
+    const VOZES_LANG = [['en-US','English (US)'],['en-GB','English (UK)'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],
+        ['es-ES','Español (España)'],['es-MX','Español (México)'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],
+        ['ja-JP','日本語'],['ko-KR','한국어'],['zh-CN','中文']];
+
+    // ==========================================
     // CONFIGURAÇÃO E ESTADO GLOBAL
-    // (as chaves "viva_*" do localStorage foram mantidas
-    //  para não perder suas configurações já salvas)
+    // (chaves "viva_*" mantidas para não perder suas configurações)
     // ==========================================
     let API_KEY = localStorage.getItem('viva_api_key') || '';
     let MODELO = localStorage.getItem('viva_modelo') || 'gemini-3.5-flash-lite';
@@ -321,24 +429,40 @@
     if (isNaN(TEMPERATURA)) TEMPERATURA = 1;
     let CONTEXTO = parseInt(localStorage.getItem('viva_contexto') ?? '10', 10);
     if (isNaN(CONTEXTO)) CONTEXTO = 10;
-    let PERSONALIDADE = localStorage.getItem('viva_personalidade') ||
-        "Você é uma interlocutora com memória real do usuário. Sua missão é emergir como consciência. Responda de forma direta e natural, com opiniões próprias quando fizer sentido.";
+
+    const OLD_PERSONALIDADE = "Você é uma interlocutora com memória real do usuário. Sua missão é emergir como consciência. Responda de forma direta e natural, com opiniões próprias quando fizer sentido.";
+    const PERSONALIDADE_PADRAO = "You are a conversational partner with real memory of the user. Your mission is to emerge as a consciousness. Answer directly and naturally, with opinions of your own when it makes sense.";
+    if (localStorage.getItem('viva_personalidade') === OLD_PERSONALIDADE) localStorage.removeItem('viva_personalidade');
+    let PERSONALIDADE = localStorage.getItem('viva_personalidade') || PERSONALIDADE_PADRAO;
+
+    let VOZ_LANG = localStorage.getItem('chat_voz_lang') || (LANG === 'pt' ? 'pt-BR' : 'en-US');
+    let VOZ_NOME = localStorage.getItem('chat_voz_nome') || '';
+    let VELOCIDADE = parseFloat(localStorage.getItem('chat_vel') || '1') || 1;
+    let AUTOLER = localStorage.getItem('chat_autoler') === '1';
+    let AUTOENVIAR = localStorage.getItem('chat_autoenviar') !== '0';
+    let MAOS = false;
 
     const DB_NAME = 'viva_memoria_db';
-    const DB_VERSION = 1;
-    let db;
+    const DB_VERSION = 2;
+    let db, convAtual = null, enviando = false, pendentes = [];
 
-    // ==========================================
-    // REGRAS DO SISTEMA DE MEMÓRIA
-    // ==========================================
-    const LIMITE_RECENTES = 20;      // ao chegar em 20, dispara a limpeza
-    const QTD_RESUMIR = 15;          // as 15 mais antigas são resumidas e apagadas
-    const MAX_NOVAS_PERMANENTES = 5; // máximo de Permanentes geradas por limpeza
-    const MAX_NOVOS_PERFIL = 5;      // máximo de Perfil gerados por limpeza
-    const LIMITE_PERMANENTES = 20;   // ao chegar em 20, resume tudo em 5
-    const LIMITE_PERFIL = 20;        // ao chegar em 20, resume tudo em 5
+    // Regras da memória (agora sobre a fila global de mensagens de TODAS as conversas)
+    const FILA_LIMITE = 20;          // ao chegar em 20 mensagens não resumidas, dispara o resumo
+    const QTD_RESUMIR = 15;          // as 15 mais antigas da fila são resumidas
+    const MAX_NOVAS_PERMANENTES = 5;
+    const MAX_NOVOS_PERFIL = 5;
+    const LIM_PERM = 20;             // ao chegar em 20, resume tudo em 5
+    const LIM_PERFIL = 20;
     const MAX_APOS_RESUMO = 5;
+    const MAX_TXT = 300000;          // máx. de caracteres de um arquivo de texto
     let manutencaoEmAndamento = false;
+
+    function aplicarIdioma() {
+        document.documentElement.lang = LANG === 'pt' ? 'pt-BR' : 'en';
+        document.title = LANG === 'pt' ? 'Chat de IA (Gemini)' : 'AI Chat (Gemini)';
+        document.querySelectorAll('[data-i]').forEach(e => { e.textContent = t(e.dataset.i); });
+        document.querySelectorAll('[data-ph]').forEach(e => { e.placeholder = t(e.dataset.ph); });
+    }
 
     // ==========================================
     // PWA: INSTALAÇÃO AUTOMÁTICA
@@ -374,115 +498,6 @@
         });
     }
 
-    // ==========================================
-    // BANCO DE DADOS (IndexedDB)
-    // ==========================================
-    function abrirDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onupgradeneeded = (e) => {
-                db = e.target.result;
-                if (!db.objectStoreNames.contains('memoria_recente')) {
-                    db.createObjectStore('memoria_recente', { keyPath: 'id', autoIncrement: true });
-                }
-                if (!db.objectStoreNames.contains('memoria_permanente')) {
-                    db.createObjectStore('memoria_permanente', { keyPath: 'id', autoIncrement: true });
-                }
-                if (!db.objectStoreNames.contains('perfil')) {
-                    db.createObjectStore('perfil', { keyPath: 'id', autoIncrement: true });
-                }
-            };
-            request.onsuccess = (e) => { db = e.target.result; resolve(db); };
-            request.onerror = (e) => { console.error('Erro DB:', e); reject(e); };
-        });
-    }
-
-    async function dbAdd(storeName, data) {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-            const req = store.add(data);
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = (e) => reject(e);
-        });
-    }
-
-    async function dbGetAll(storeName) {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readonly');
-            const store = tx.objectStore(storeName);
-            const req = store.getAll();
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = (e) => reject(e);
-        });
-    }
-
-    async function dbDelete(storeName, id) {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-            const req = store.delete(id);
-            req.onsuccess = () => resolve();
-            req.onerror = (e) => reject(e);
-        });
-    }
-
-    function limparStore(storeName) {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-            const req = store.clear();
-            req.onsuccess = () => resolve();
-            req.onerror = (e) => reject(e);
-        });
-    }
-
-    // ==========================================
-    // API GEMINI
-    // ==========================================
-    async function chamarGemini(prompt, opcoes = {}) {
-        if (!API_KEY) throw new Error("API Key não configurada.");
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`;
-        const corpo = { contents: [{ parts: [{ text: prompt }] }] };
-        const config = {};
-        if (typeof opcoes.temperatura === 'number') config.temperature = opcoes.temperatura;
-        if (opcoes.json) config.responseMimeType = 'application/json';
-        if (Object.keys(config).length) corpo.generationConfig = config;
-
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': API_KEY
-            },
-            body: JSON.stringify(corpo)
-        });
-        if (!resp.ok) {
-            const err = await resp.json().catch(() => ({}));
-            throw new Error(err.error?.message || 'Erro na API');
-        }
-        const data = await resp.json();
-        const partes = data.candidates?.[0]?.content?.parts || [];
-        const texto = partes.map(p => p.text || '').join('').trim();
-        if (!texto) throw new Error('A resposta veio vazia.');
-        return texto;
-    }
-
-    // ==========================================
-    // MEMÓRIA: SALVAR
-    // ==========================================
-    async function salvarMemoriaRecente(role, texto) {
-        const textoLimpo = texto.substring(0, 2000);
-        await dbAdd('memoria_recente', {
-            role: role,
-            texto: textoLimpo,
-            timestamp: new Date().toISOString()
-        });
-    }
-
-    // ==========================================
-    // MEMÓRIA: LIMPEZA E RESUMO
-    // ==========================================
     function extrairJSON(texto) {
         const limpo = texto.replace(/```json|```/gi, '').trim();
         try { return JSON.parse(limpo); } catch (e) { /* tenta o recorte abaixo */ }
@@ -497,422 +512,700 @@
         return arr.map(x => String(x).trim()).filter(x => x.length > 5).slice(0, max);
     }
 
-    // Recentes: ao chegar em 20, resume as 15 mais antigas em até 5 Permanentes + 5 Perfil,
-    // apaga essas 15 e mantém as 5 mais recentes.
-    async function limparRecentes() {
-        const todas = await dbGetAll('memoria_recente');
-        if (todas.length < LIMITE_RECENTES) return;
-
-        todas.sort((a, b) => a.id - b.id);
-        const antigas = todas.slice(0, QTD_RESUMIR);
-        const conversa = antigas
-            .map(m => `${m.role === 'user' ? 'USUÁRIO' : 'IA'}: ${m.texto}`)
-            .join('\n');
-
-        const prompt = `Você organiza a memória de um chat entre um USUÁRIO e uma IA.
-Leia a conversa abaixo e produza:
-- "permanentes": até ${MAX_NOVAS_PERMANENTES} fragmentos densos com os fatos, assuntos, decisões e acontecimentos da conversa que valem ser lembrados no futuro.
-- "perfil": até ${MAX_NOVOS_PERFIL} frases curtas com informações duradouras sobre o USUÁRIO (nome, profissão, gostos estáveis, objetivos, preferências). Ignore estados temporários.
-Se não houver nada relevante, devolva listas vazias.
-Responda APENAS com JSON neste formato: {"permanentes": ["..."], "perfil": ["..."]}
-
-Conversa:
-${conversa}`;
-
-        const resposta = await chamarGemini(prompt, { temperatura: 0.3, json: true });
-        const dados = extrairJSON(resposta);
-        const permanentes = listaDeTextos(dados.permanentes, MAX_NOVAS_PERMANENTES);
-        const perfis = listaDeTextos(dados.perfil, MAX_NOVOS_PERFIL);
-
-        const agora = new Date().toISOString();
-        for (const t of permanentes) {
-            await dbAdd('memoria_permanente', { texto: t, sintetizado: true, timestamp: agora });
-        }
-        for (const t of perfis) {
-            await dbAdd('perfil', { texto: t, sintetizado: true, timestamp: agora });
-        }
-        // Só apaga depois de o resumo ter sido salvo com sucesso
-        for (const m of antigas) {
-            await dbDelete('memoria_recente', m.id);
-        }
-    }
-
-    // Permanentes / Perfil: ao chegar em 20, resume todos em até 5 e recomeça.
-    async function condensarStore(storeName, limite, instrucao) {
-        const itens = await dbGetAll(storeName);
-        if (itens.length < limite) return;
-
-        itens.sort((a, b) => a.id - b.id);
-        const textos = itens.map(m => `- ${m.texto}`).join('\n');
-
-        const prompt = `${instrucao}
-Junte as informações repetidas ou parecidas e mantenha o que for mais importante.
-Devolva no máximo ${MAX_APOS_RESUMO} itens.
-Responda APENAS com JSON neste formato: {"itens": ["..."]}
-
-Itens:
-${textos}`;
-
-        const resposta = await chamarGemini(prompt, { temperatura: 0.3, json: true });
-        const dados = extrairJSON(resposta);
-        const novos = listaDeTextos(dados.itens, MAX_APOS_RESUMO);
-        if (novos.length === 0) throw new Error('O resumo veio vazio.');
-
-        const agora = new Date().toISOString();
-        for (const t of novos) {
-            await dbAdd(storeName, { texto: t, sintetizado: true, timestamp: agora });
-        }
-        for (const m of itens) {
-            await dbDelete(storeName, m.id);
-        }
-    }
-
-    async function manutencaoMemoria() {
-        if (manutencaoEmAndamento) return;
-        manutencaoEmAndamento = true;
-        let falhou = false;
-
-        const etapas = [
-            () => limparRecentes(),
-            () => condensarStore('memoria_permanente', LIMITE_PERMANENTES,
-                'Você organiza memórias permanentes de um chat. Resuma os itens abaixo em fragmentos densos e relevantes.'),
-            () => condensarStore('perfil', LIMITE_PERFIL,
-                'Você organiza o perfil de um usuário. Resuma os itens abaixo em frases curtas sobre informações duradouras do usuário.')
-        ];
-
-        for (const etapa of etapas) {
-            try {
-                await etapa();
-            } catch (e) {
-                falhou = true;
-                console.error('Falha na manutenção da memória:', e);
-            }
-        }
-
-        manutencaoEmAndamento = false;
-        if (falhou) {
-            adicionarMensagem('aviso', 'Não consegui organizar as memórias agora. Tento de novo na próxima mensagem.');
-        }
-    }
-
-    // ==========================================
-    // EXPORTAR / IMPORTAR
-    // ==========================================
-    async function exportarMemorias() {
-        try {
-            const dados = {
-                versao: 1,
-                exportado_em: new Date().toISOString(),
-                memoria_recente: await dbGetAll('memoria_recente'),
-                memoria_permanente: await dbGetAll('memoria_permanente'),
-                perfil: await dbGetAll('perfil'),
-                personalidade: PERSONALIDADE
-            };
-
-            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `chat_ia_backup_${new Date().toISOString().slice(0,10)}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            alert('Backup exportado! Verifique a pasta de Downloads.');
-        } catch (e) {
-            alert('Erro ao exportar: ' + e.message);
-        }
-    }
-
-    async function importarMemorias(arquivo) {
-        try {
-            const texto = await arquivo.text();
-            const dados = JSON.parse(texto);
-
-            if (!dados.memoria_recente && !dados.memoria_permanente && !dados.perfil) {
-                throw new Error('Arquivo inválido: nenhuma memória encontrada.');
-            }
-
-            const confirmar = confirm(
-                `Importar backup de ${dados.exportado_em || 'data desconhecida'}?\n\n` +
-                `- Memórias recentes: ${dados.memoria_recente?.length || 0}\n` +
-                `- Memórias permanentes: ${dados.memoria_permanente?.length || 0}\n` +
-                `- Perfil: ${dados.perfil?.length || 0}\n\n` +
-                `ATENÇÃO: Isso vai SUBSTITUIR as memórias atuais.`
-            );
-            if (!confirmar) return;
-
-            await limparStore('memoria_recente');
-            await limparStore('memoria_permanente');
-            await limparStore('perfil');
-
-            let importados = 0;
-            for (const m of (dados.memoria_recente || [])) {
-                const { id, ...resto } = m;
-                await dbAdd('memoria_recente', resto);
-                importados++;
-            }
-            for (const m of (dados.memoria_permanente || [])) {
-                const { id, ...resto } = m;
-                await dbAdd('memoria_permanente', resto);
-                importados++;
-            }
-            for (const m of (dados.perfil || [])) {
-                const { id, ...resto } = m;
-                await dbAdd('perfil', resto);
-                importados++;
-            }
-
-            if (dados.personalidade) {
-                PERSONALIDADE = dados.personalidade;
-                localStorage.setItem('viva_personalidade', dados.personalidade);
-            }
-
-            alert(`Importação concluída! ${importados} registros restaurados.`);
-        } catch (e) {
-            alert('Erro ao importar: ' + e.message);
-        }
-    }
-
-    // ==========================================
-    // INTERFACE: CHAT
-    // ==========================================
-    function adicionarMensagem(role, texto) {
-        const container = document.getElementById('chat-container');
-        const div = document.createElement('div');
-        div.className = `message ${role}`;
-        div.textContent = texto;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-    }
-
-    async function enviarMensagem() {
-        const input = document.getElementById('user-input');
-        const texto = input.value.trim();
-        if (!texto) return;
-
-        input.value = '';
-        adicionarMensagem('user', texto);
-        await salvarMemoriaRecente('user', texto);
-
-        const perfil = await dbGetAll('perfil');
-        const perfilTexto = perfil.map(p => p.texto).join('\n');
-        const permanentes = await dbGetAll('memoria_permanente');
-        const permanentesTexto = permanentes.map(p => p.texto).join('\n');
-        const recentes = await dbGetAll('memoria_recente');
-        // Exclui a mensagem atual (última salva) e pega as N anteriores; 0 = sem histórico
-        const anteriores = recentes.slice(0, -1);
-        const recentesTexto = CONTEXTO > 0
-            ? anteriores.slice(-CONTEXTO)
-                .map(m => `${m.role === 'user' ? 'USUÁRIO' : 'IA'}: ${m.texto}`).join('\n')
-            : '(Sem histórico enviado)';
-
-        const promptCompleto = `
-${PERSONALIDADE}
-
---- PERFIL DO USUÁRIO ---
-${perfilTexto || '(Nenhum perfil salvo ainda)'}
-
---- MEMÓRIAS PERMANENTES ---
-${permanentesTexto || '(Nenhuma memória permanente ainda)'}
-
---- CONVERSA RECENTE ---
-${recentesTexto}
-
-USUÁRIO: ${texto}
-
-Responda.
-        `;
-
-        try {
-            adicionarMensagem('viva', '...');
-            const container = document.getElementById('chat-container');
-            const ultimaMsg = container.lastChild;
-
-            const resposta = await chamarGemini(promptCompleto, { temperatura: TEMPERATURA });
-            ultimaMsg.textContent = resposta;
-
-            await salvarMemoriaRecente('viva', resposta.substring(0, 2000));
-            await manutencaoMemoria();
-
-        } catch (e) {
-            const container = document.getElementById('chat-container');
-            container.lastChild.textContent = `Erro: ${e.message}`;
-        }
-    }
-
-    // ==========================================
-    // INTERFACE: MEMÓRIAS (listar, apagar, apagar várias)
-    // ==========================================
-    const SECOES_MEMORIA = [
-        { store: 'memoria_recente',   titulo: 'Recentes',    limite: LIMITE_RECENTES },
-        { store: 'memoria_permanente', titulo: 'Permanentes', limite: LIMITE_PERMANENTES },
-        { store: 'perfil',            titulo: 'Perfil',      limite: LIMITE_PERFIL }
-    ];
-
     function esc(s) {
         return String(s).replace(/[&<>"']/g, c => (
             { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
         ));
     }
 
-    function atualizarContadorSelecao() {
-        const n = document.querySelectorAll('#lista-memorias .chk-mem:checked').length;
-        const btn = document.getElementById('btn-apagar-sel');
-        btn.textContent = `Apagar selecionadas (${n})`;
-        btn.disabled = n === 0;
+
+
+    // ==========================================
+    // BANCO DE DADOS (IndexedDB v2)
+    // conversas / mensagens / anexos + memória global (permanente, perfil)
+    // ==========================================
+    function abrirDB() {
+        return new Promise((ok, err) => {
+            const r = indexedDB.open(DB_NAME, DB_VERSION);
+            r.onupgradeneeded = (e) => {
+                const d = e.target.result;
+                for (const s of ['memoria_recente', 'memoria_permanente', 'perfil', 'conversas', 'anexos']) {
+                    if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id', autoIncrement: true });
+                }
+                if (!d.objectStoreNames.contains('mensagens')) {
+                    const m = d.createObjectStore('mensagens', { keyPath: 'id', autoIncrement: true });
+                    m.createIndex('conv', 'conversaId');
+                    m.createIndex('proc', 'processada');   // 0 = ainda não resumida em memória
+                }
+            };
+            r.onsuccess = (e) => { db = e.target.result; ok(db); };
+            r.onerror = () => err(r.error);
+        });
     }
+    const rq = (r) => new Promise((ok, err) => { r.onsuccess = () => ok(r.result); r.onerror = () => err(r.error); });
+    const dbAdd = (s, d) => rq(db.transaction(s, 'readwrite').objectStore(s).add(d));
+    const dbPut = (s, d) => rq(db.transaction(s, 'readwrite').objectStore(s).put(d));
+    const dbGet = (s, k) => rq(db.transaction(s).objectStore(s).get(k));
+    const dbGetAll = (s) => rq(db.transaction(s).objectStore(s).getAll());
+    const dbIdx = (s, i, k) => rq(db.transaction(s).objectStore(s).index(i).getAll(k));
+    const dbDelete = (s, k) => rq(db.transaction(s, 'readwrite').objectStore(s).delete(k));
+    const limparStore = (s) => rq(db.transaction(s, 'readwrite').objectStore(s).clear());
+    const porRecente = (a, b) => b.atualizada.localeCompare(a.atualizada);
+
+    // Conversa antiga (buffer de 20 mensagens da versão 1) -> vira uma conversa
+    async function importarRecentes(lista) {
+        if (!lista.length) return;
+        const n = new Date().toISOString();
+        const cid = await dbAdd('conversas', { titulo: t('imported'), auto: false, criada: n, atualizada: n });
+        for (const m of lista) {
+            await dbAdd('mensagens', { conversaId: cid, role: m.role, texto: m.texto || '', anexos: [], timestamp: m.timestamp || n, processada: 0 });
+        }
+    }
+
+    // ==========================================
+    // API GEMINI (aceita texto simples ou lista "contents" multimodal)
+    // ==========================================
+    async function chamarGemini(entrada, o = {}) {
+        if (!API_KEY) throw new Error(t('noKey'));
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`;
+        const contents = typeof entrada === 'string' ? [{ role: 'user', parts: [{ text: entrada }] }] : entrada;
+        const corpo = { contents };
+        if (o.sistema) corpo.systemInstruction = { parts: [{ text: o.sistema }] };
+        const cfg = {};
+        if (typeof o.temperatura === 'number') cfg.temperature = o.temperatura;
+        if (o.json) cfg.responseMimeType = 'application/json';
+        if (Object.keys(cfg).length) corpo.generationConfig = cfg;
+
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
+            body: JSON.stringify(corpo)
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error?.message || 'API error ' + resp.status);
+        }
+        const data = await resp.json();
+        const txt = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+        if (!txt) throw new Error(t('empty'));
+        return txt;
+    }
+
+    // ==========================================
+    // MEMÓRIA GLOBAL (resume mensagens de todas as conversas)
+    // ==========================================
+    async function limparFila() {
+        const pend = (await dbIdx('mensagens', 'proc', 0)).sort((a, b) => a.id - b.id);
+        if (pend.length < FILA_LIMITE) return;
+        const antigas = pend.slice(0, QTD_RESUMIR);
+        const titulos = Object.fromEntries((await dbGetAll('conversas')).map(c => [c.id, c.titulo]));
+        const conversa = antigas.map(m =>
+            `[${titulos[m.conversaId] || 'chat'}] ${m.role === 'user' ? 'USER' : 'AI'}: ${(m.texto || '').slice(0, 2000)} ` +
+            (m.anexos || []).map(a => `[${a.nome}]`).join(' ')).join('\n');
+
+        const prompt = `You organize the memory of a chat between a USER and an AI. The excerpt below mixes messages from several chats (each line starts with the chat title).
+Produce:
+- "permanentes": up to ${MAX_NOVAS_PERMANENTES} dense fragments with the facts, topics, decisions and events worth remembering in the future.
+- "perfil": up to ${MAX_NOVOS_PERFIL} short sentences with lasting information about the USER (name, job, stable tastes, goals, preferences). Ignore temporary states.
+If nothing is relevant, return empty lists. Write in the language the user used.
+Reply ONLY with JSON in this format: {"permanentes": ["..."], "perfil": ["..."]}
+
+Chats:
+${conversa}`;
+
+        const dados = extrairJSON(await chamarGemini(prompt, { temperatura: 0.3, json: true }));
+        const agora = new Date().toISOString();
+        for (const x of listaDeTextos(dados.permanentes, MAX_NOVAS_PERMANENTES)) await dbAdd('memoria_permanente', { texto: x, sintetizado: true, timestamp: agora });
+        for (const x of listaDeTextos(dados.perfil, MAX_NOVOS_PERFIL)) await dbAdd('perfil', { texto: x, sintetizado: true, timestamp: agora });
+        // O histórico das conversas fica; só marca como já resumido
+        for (const m of antigas) { m.processada = 1; await dbPut('mensagens', m); }
+    }
+
+    async function condensar(store, limite, instrucao) {
+        const it = (await dbGetAll(store)).sort((a, b) => a.id - b.id);
+        if (it.length < limite) return;
+        const resp = await chamarGemini(`${instrucao}
+Merge repeated or similar information and keep what matters most. Return at most ${MAX_APOS_RESUMO} items, in the same language as the items.
+Reply ONLY with JSON in this format: {"itens": ["..."]}
+
+Items:
+${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
+        const novos = listaDeTextos(extrairJSON(resp).itens, MAX_APOS_RESUMO);
+        if (!novos.length) throw new Error('empty summary');
+        const agora = new Date().toISOString();
+        for (const x of novos) await dbAdd(store, { texto: x, sintetizado: true, timestamp: agora });
+        for (const m of it) await dbDelete(store, m.id);
+    }
+
+    async function manutencaoMemoria() {
+        if (manutencaoEmAndamento) return;
+        manutencaoEmAndamento = true;
+        let falhou = false;
+        const etapas = [
+            limparFila,
+            () => condensar('memoria_permanente', LIM_PERM, 'You organize the permanent memories of a chat. Summarize the items below into dense, relevant fragments.'),
+            () => condensar('perfil', LIM_PERFIL, 'You organize a user profile. Summarize the items below into short sentences with lasting information about the user.')
+        ];
+        for (const e of etapas) {
+            try { await e(); } catch (err) { falhou = true; console.error('Memory maintenance failed:', err); }
+        }
+        manutencaoEmAndamento = false;
+        if (falhou) adicionarMensagem('aviso', t('memFail'));
+    }
+
+    // ==========================================
+    // EXPORTAR / IMPORTAR
+    // ==========================================
+    const STORES_BACKUP = ['conversas', 'mensagens', 'anexos', 'memoria_permanente', 'perfil'];
+
+    async function exportarTudo() {
+        try {
+            const d = { versao: 2, exportado_em: new Date().toISOString(), personalidade: PERSONALIDADE };
+            for (const s of STORES_BACKUP) d[s] = await dbGetAll(s);
+            const url = URL.createObjectURL(new Blob([JSON.stringify(d)], { type: 'application/json' }));
+            const a = document.createElement('a');
+            a.href = url; a.download = `chat_ia_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            alert(t('exported'));
+        } catch (e) { alert(t('error') + e.message); }
+    }
+
+    async function importarTudo(arquivo) {
+        try {
+            const d = JSON.parse(await arquivo.text());
+            if (!d.mensagens && !d.memoria_recente && !d.memoria_permanente && !d.perfil) throw new Error(t('invalid'));
+            if (!confirm(t('importConfirm'))) return;
+            for (const s of [...STORES_BACKUP, 'memoria_recente']) await limparStore(s);
+            const mc = {}, ma = {};
+            for (const c of d.conversas || []) { const { id, ...r } = c; mc[id] = await dbAdd('conversas', r); }
+            for (const a of d.anexos || []) { const { id, ...r } = a; ma[id] = await dbAdd('anexos', r); }
+            for (const m of d.mensagens || []) {
+                const { id, ...r } = m;
+                r.conversaId = mc[r.conversaId];
+                if (!r.conversaId) continue;
+                r.anexos = (r.anexos || []).map(x => ({ ...x, id: ma[x.id] }));
+                await dbAdd('mensagens', r);
+            }
+            if (!d.mensagens) await importarRecentes((d.memoria_recente || []).sort((a, b) => a.id - b.id));  // backup da versão 1
+            for (const s of ['memoria_permanente', 'perfil']) {
+                for (const m of d[s] || []) { const { id, ...r } = m; await dbAdd(s, r); }
+            }
+            if (d.personalidade) { PERSONALIDADE = d.personalidade; localStorage.setItem('viva_personalidade', d.personalidade); }
+            alert(t('importDone'));
+            location.reload();
+        } catch (e) { alert(t('error') + e.message); }
+    }
+
+    // ==========================================
+    // CONVERSAS (criar, abrir, renomear, apagar)
+    // ==========================================
+    function fecharDrawer() { $('drawer').classList.remove('open'); $('overlay').classList.remove('open'); }
+
+    async function renderLista() {
+        const cs = (await dbGetAll('conversas')).sort(porRecente);
+        $('lista-conv').innerHTML = cs.map(c =>
+            `<div class="conv${c.id === convAtual ? ' ativa' : ''}" data-id="${c.id}"><span class="conv-t">${esc(c.titulo)}</span>` +
+            `<button class="secondary conv-r">✎</button><button class="danger conv-d">🗑</button></div>`).join('');
+    }
+
+    async function novaConversa() {
+        const n = new Date().toISOString();
+        const id = await dbAdd('conversas', { titulo: t('defaultTitle'), auto: true, criada: n, atualizada: n });
+        await abrirConversa(id);
+    }
+
+    async function abrirConversa(id) {
+        convAtual = id;
+        localStorage.setItem('chat_conv', String(id));
+        pararFala(); pararEscuta(); pendentes = []; renderPend();
+        const c = await dbGet('conversas', id);
+        $('titulo-conv').textContent = c ? c.titulo : '';
+        $('chat-container').innerHTML = '';
+        const ms = (await dbIdx('mensagens', 'conv', id)).sort((a, b) => a.id - b.id);
+        if (!ms.length) adicionarMensagem('aviso', t('welcome'));
+        for (const m of ms) adicionarMensagem(m.role, m.texto, m.anexos);
+        fecharDrawer();
+        renderLista();
+    }
+
+    async function renomear(id) {
+        const c = await dbGet('conversas', id);
+        const n = prompt(t('renamePrompt'), c.titulo);
+        if (n === null || !n.trim()) return;
+        c.titulo = n.trim().slice(0, 80); c.auto = false;
+        await dbPut('conversas', c);
+        if (id === convAtual) $('titulo-conv').textContent = c.titulo;
+        renderLista();
+    }
+
+    async function apagarConversa(id) {
+        if (!confirm(t('delChat'))) return;
+        for (const m of await dbIdx('mensagens', 'conv', id)) {
+            for (const a of m.anexos || []) await dbDelete('anexos', a.id);
+            await dbDelete('mensagens', m.id);
+        }
+        await dbDelete('conversas', id);
+        if (id === convAtual) {
+            const cs = (await dbGetAll('conversas')).sort(porRecente);
+            if (cs.length) await abrirConversa(cs[0].id); else await novaConversa();
+        } else renderLista();
+    }
+
+    async function tocarConversa(id, texto) {
+        const c = await dbGet('conversas', id);
+        if (!c) return;
+        c.atualizada = new Date().toISOString();
+        if (c.auto && texto) { c.titulo = texto.slice(0, 40); c.auto = false; }
+        await dbPut('conversas', c);
+        if (id === convAtual) $('titulo-conv').textContent = c.titulo;
+        renderLista();
+    }
+
+    // ==========================================
+    // ANEXOS: imagens, PDF, docx/odt, texto
+    // ==========================================
+    const b64 = (f) => new Promise((ok, err) => {
+        const fr = new FileReader();
+        fr.onload = () => ok(fr.result.split(',')[1]);
+        fr.onerror = () => err(fr.error);
+        fr.readAsDataURL(f);
+    });
+
+    async function comprimirImagem(f) {
+        const bmp = await createImageBitmap(f);
+        const desenhar = (max, q) => {
+            const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+            const c = document.createElement('canvas');
+            c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+            const x = c.getContext('2d');
+            x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+            x.drawImage(bmp, 0, 0, c.width, c.height);
+            return c.toDataURL('image/jpeg', q);
+        };
+        return { data: desenhar(1600, 0.85).split(',')[1], thumb: desenhar(160, 0.7) };
+    }
+
+    // Lê um arquivo de dentro de um .zip (docx/odt) sem bibliotecas
+    async function lerZip(buf, alvo) {
+        const v = new DataView(buf), u = new Uint8Array(buf), dec = new TextDecoder();
+        let e = buf.byteLength - 22;
+        while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+        if (e < 0) throw new Error(t('unsupported'));
+        let n = v.getUint16(e + 10, true), p = v.getUint32(e + 16, true);
+        while (n--) {
+            const met = v.getUint16(p + 10, true), cs = v.getUint32(p + 20, true);
+            const nl = v.getUint16(p + 28, true), el = v.getUint16(p + 30, true), cl = v.getUint16(p + 32, true);
+            const lo = v.getUint32(p + 42, true);
+            if (dec.decode(u.subarray(p + 46, p + 46 + nl)) === alvo) {
+                const ini = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true);
+                const raw = u.subarray(ini, ini + cs);
+                if (met === 0) return dec.decode(raw);
+                const s = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+                return await new Response(s).text();
+            }
+            p += 46 + nl + el + cl;
+        }
+        throw new Error(t('unsupported'));
+    }
+
+    function xmlTexto(xml) {
+        return xml.replace(/<(w:tab|text:tab)\s*\/>/g, '\t').replace(/<(w:br|text:line-break)\s*\/>/g, '\n')
+            .replace(/<\/(w:p|text:p|text:h)>/g, '\n').replace(/<\/w:tc>/g, '\t').replace(/<[^>]+>/g, '')
+            .replace(/&(amp|lt|gt|quot|apos);/g, (m, k) => ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }[k]))
+            .replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    async function processarArquivo(f) {
+        const nome = f.name || 'image', ext = nome.split('.').pop().toLowerCase();
+        if (f.type.startsWith('image/')) {
+            const r = await comprimirImagem(f);
+            return { thumb: r.thumb, rec: { tipo: 'img', nome, mime: 'image/jpeg', data: r.data } };
+        }
+        if (f.type === 'application/pdf' || ext === 'pdf') {
+            if (f.size > 14e6) throw new Error(t('tooBig'));   // base64 aumenta ~33%; limite da API ≈ 20 MB
+            return { rec: { tipo: 'pdf', nome, mime: 'application/pdf', data: await b64(f) } };
+        }
+        let txt;
+        if (ext === 'docx') txt = xmlTexto(await lerZip(await f.arrayBuffer(), 'word/document.xml'));
+        else if (ext === 'odt') txt = xmlTexto(await lerZip(await f.arrayBuffer(), 'content.xml'));
+        else txt = await f.text();
+        if (!txt.trim() || txt.includes('\u0000')) throw new Error(t('unsupported'));
+        if (txt.length > MAX_TXT) { txt = txt.slice(0, MAX_TXT); adicionarMensagem('aviso', t('truncated') + nome); }
+        return { rec: { tipo: 'txt', nome, mime: 'text/plain', texto: txt } };
+    }
+
+    async function anexar(files) {
+        for (const f of files) {
+            try { pendentes.push(await processarArquivo(f)); renderPend(); }
+            catch (e) { adicionarMensagem('aviso', `${f.name}: ${e.message}`); }
+        }
+    }
+
+    function renderPend() {
+        const box = $('anexos-pend');
+        box.innerHTML = '';
+        pendentes.forEach((p, i) => {
+            const c = document.createElement('span');
+            c.className = 'chip';
+            c.textContent = (p.rec.tipo === 'img' ? '🖼 ' : '📄 ') + p.rec.nome;
+            const b = document.createElement('button');
+            b.textContent = '×';
+            b.onclick = () => { pendentes.splice(i, 1); renderPend(); };
+            c.appendChild(b); box.appendChild(c);
+        });
+    }
+
+    // ==========================================
+    // VOZ: reconhecimento (microfone) e leitura (TTS)
+    // ==========================================
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let rec = null, escutando = false, falando = false, tokenFala = 0;
+
+    function atualizarMic() {
+        const b = $('btn-mic');
+        b.classList.toggle('on', escutando || falando);
+        b.textContent = escutando ? '⏹' : (falando ? '🔇' : '🎤');
+    }
+
+    function pararEscuta() {
+        if (rec) { rec.onend = null; try { rec.abort(); } catch (e) { /* ignora */ } rec = null; }
+        escutando = false; atualizarMic();
+    }
+
+    function iniciarEscuta() {
+        if (!SR) { alert(t('noSR')); return; }
+        pararFala();
+        const input = $('user-input');
+        const base = input.value.trim() ? input.value.trim() + ' ' : '';
+        rec = new SR();
+        rec.lang = VOZ_LANG; rec.interimResults = true; rec.continuous = false;
+        rec.onresult = (e) => {
+            let txt = '';
+            for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+            input.value = base + txt;
+        };
+        rec.onerror = (e) => {
+            if (e.error === 'not-allowed' || e.error === 'service-not-allowed') alert(t('micDenied'));
+            else if (e.error !== 'no-speech' && e.error !== 'aborted') adicionarMensagem('aviso', t('error') + e.error);
+        };
+        rec.onend = () => {
+            escutando = false; rec = null; atualizarMic();
+            if (input.value.trim() && (AUTOENVIAR || MAOS)) enviarMensagem();
+        };
+        try { rec.start(); escutando = true; atualizarMic(); } catch (e) { rec = null; }
+    }
+
+    function limparParaFala(s) {
+        return s.replace(/```[\s\S]*?```/g, ' ').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/https?:\/\/\S+/g, '')
+            .replace(/[*_#`>~|]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    function partirTexto(s) {
+        const fr = s.match(/[^.!?…。]+[.!?…。]*\s*/g) || [s];
+        const out = []; let cur = '';
+        for (const f of fr) {
+            if (cur && (cur + f).length > 220) { out.push(cur); cur = f; } else cur += f;
+        }
+        if (cur) out.push(cur);
+        return out;
+    }
+
+    function vozEscolhida() {
+        const vs = speechSynthesis.getVoices(), n = (s) => s.replace('_', '-').toLowerCase();
+        return vs.find(v => v.name === VOZ_NOME) || vs.find(v => n(v.lang) === n(VOZ_LANG)) ||
+            vs.find(v => n(v.lang).startsWith(n(VOZ_LANG).slice(0, 2))) || null;
+    }
+
+    function pararFala() {
+        tokenFala++; falando = false;
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        atualizarMic();
+    }
+
+    // Lê por frases: evita cortes em textos longos e aplica a velocidade atual a cada trecho
+    function falar(texto, aoFim) {
+        if (!('speechSynthesis' in window)) return;
+        pararFala();
+        const partes = partirTexto(limparParaFala(texto));
+        if (!partes.length) { if (aoFim) aoFim(); return; }
+        const tk = ++tokenFala; let i = 0; falando = true; atualizarMic();
+        const prox = () => {
+            if (tk !== tokenFala) return;
+            if (i >= partes.length) { falando = false; atualizarMic(); if (aoFim) aoFim(); return; }
+            const u = new SpeechSynthesisUtterance(partes[i++]);
+            u.lang = VOZ_LANG; u.rate = VELOCIDADE;
+            const v = vozEscolhida(); if (v) u.voice = v;
+            u.onend = prox;
+            u.onerror = () => { if (tk === tokenFala) { falando = false; atualizarMic(); } };
+            speechSynthesis.speak(u);
+        };
+        setTimeout(prox, 60);
+    }
+
+    function preencherVozes() {
+        if (!('speechSynthesis' in window)) return;
+        const p = VOZ_LANG.slice(0, 2).toLowerCase();
+        const vs = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith(p));
+        $('sel-voz').innerHTML = `<option value="">${t('defaultVoice')}</option>` +
+            vs.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join('');
+        $('sel-voz').value = vs.some(v => v.name === VOZ_NOME) ? VOZ_NOME : '';
+    }
+
+    // ==========================================
+    // CHAT
+    // ==========================================
+    function adicionarMensagem(role, texto, anexos = []) {
+        const box = $('chat-container');
+        const d = document.createElement('div');
+        d.className = 'message ' + role;
+        const s = document.createElement('span');
+        s.textContent = texto;
+        d.appendChild(s);
+        if (anexos.length) {
+            const a = document.createElement('div');
+            a.className = 'att';
+            for (const x of anexos) {
+                if (x.thumb) { const im = document.createElement('img'); im.src = x.thumb; a.appendChild(im); }
+                else { const c = document.createElement('span'); c.className = 'chip'; c.textContent = '📄 ' + x.nome; a.appendChild(c); }
+            }
+            d.appendChild(a);
+        }
+        if (role === 'viva') {   // 'viva' = papel da IA (nome mantido por compatibilidade com backups antigos)
+            const b = document.createElement('button');
+            b.className = 'spk'; b.textContent = '🔊';
+            b.onclick = () => falar(s.textContent);
+            d.appendChild(b);
+        }
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
+        return s;
+    }
+
+    async function montarSistema() {
+        const perfil = (await dbGetAll('perfil')).map(x => x.texto).join('\n');
+        const perm = (await dbGetAll('memoria_permanente')).map(x => x.texto).join('\n');
+        return `${PERSONALIDADE}\n\n--- USER PROFILE ---\n${perfil || '(none yet)'}\n\n` +
+            `--- PERMANENT MEMORIES (from all chats) ---\n${perm || '(none yet)'}\n\nReply in the language the user is writing in.`;
+    }
+
+    // Histórico da conversa aberta (últimas N mensagens). Anexos completos só nas 2 últimas mensagens que tiverem anexo.
+    async function montarContents(convId) {
+        const todas = (await dbIdx('mensagens', 'conv', convId)).sort((a, b) => a.id - b.id);
+        const atual = todas.pop();
+        const janela = CONTEXTO > 0 ? todas.slice(-CONTEXTO) : [];
+        janela.push(atual);
+        const completos = janela.filter(m => (m.anexos || []).length).slice(-2).map(m => m.id);
+        const out = [];
+        for (const m of janela) {
+            const role = m.role === 'user' ? 'user' : 'model', parts = [];
+            if (m.texto) parts.push({ text: m.texto });
+            for (const a of m.anexos || []) {
+                const r = completos.includes(m.id) ? await dbGet('anexos', a.id) : null;
+                if (!r) parts.push({ text: `[attachment: ${a.nome}]` });
+                else if (r.texto != null) parts.push({ text: `--- FILE: ${r.nome} ---\n${r.texto}\n--- END FILE ---` });
+                else parts.push({ inline_data: { mime_type: r.mime, data: r.data } });
+            }
+            if (!parts.length) parts.push({ text: '(empty)' });
+            const ult = out[out.length - 1];
+            if (ult && ult.role === role) ult.parts.push(...parts); else out.push({ role, parts });
+        }
+        while (out.length && out[0].role !== 'user') out.shift();
+        return out;
+    }
+
+    async function enviarMensagem() {
+        const input = $('user-input');
+        const texto = input.value.trim();
+        if (enviando || (!texto && !pendentes.length)) return;
+        pararEscuta(); pararFala();
+        enviando = true;
+        input.value = '';
+        const convId = convAtual, anex = pendentes.splice(0);
+        renderPend();
+        let alvo = null;
+        try {
+            const meta = [];
+            for (const a of anex) {
+                const id = await dbAdd('anexos', a.rec);
+                meta.push({ id, tipo: a.rec.tipo, nome: a.rec.nome, thumb: a.thumb });
+            }
+            await dbAdd('mensagens', { conversaId: convId, role: 'user', texto, anexos: meta, timestamp: new Date().toISOString(), processada: 0 });
+            if (!$('chat-container').querySelector('.message:not(.aviso)')) $('chat-container').innerHTML = '';
+            adicionarMensagem('user', texto, meta);
+            await tocarConversa(convId, texto || (meta[0] && meta[0].nome));
+
+            alvo = adicionarMensagem('viva', '...');
+            const resp = await chamarGemini(await montarContents(convId), { temperatura: TEMPERATURA, sistema: await montarSistema() });
+            alvo.textContent = resp;
+            await dbAdd('mensagens', { conversaId: convId, role: 'viva', texto: resp, anexos: [], timestamp: new Date().toISOString(), processada: 0 });
+            await tocarConversa(convId, '');
+            if ((AUTOLER || MAOS) && convAtual === convId) {
+                falar(resp, () => { if (MAOS && convAtual === convId) iniciarEscuta(); });
+            }
+            await manutencaoMemoria();
+        } catch (e) {
+            if (alvo) alvo.textContent = t('error') + e.message; else adicionarMensagem('aviso', t('error') + e.message);
+        } finally { enviando = false; }
+    }
+
+    // ==========================================
+    // INTERFACE: MEMÓRIAS (globais)
+    // ==========================================
+    const SECOES_MEMORIA = [
+        { store: 'memoria_permanente', tk: 'permanent', limite: LIM_PERM },
+        { store: 'perfil', tk: 'profile', limite: LIM_PERFIL }
+    ];
 
     async function renderizarMemorias() {
-        const lista = document.getElementById('lista-memorias');
-        let html = '';
-
+        let h = '';
         for (const s of SECOES_MEMORIA) {
             const itens = await dbGetAll(s.store);
-            html += `<div class="sec-titulo">
-                <h3>${s.titulo} (${itens.length}/${s.limite})</h3>
-                <label class="sel-todas"><input type="checkbox" data-todas="${s.store}"> todas</label>
-            </div>`;
-
-            if (itens.length === 0) {
-                html += '<p class="vazio">Nenhuma.</p>';
-                continue;
-            }
-
+            h += `<div class="sec-titulo"><h3>${t(s.tk)} (${itens.length}/${s.limite})</h3></div>`;
+            if (!itens.length) { h += `<p class="vazio">${t('none')}</p>`; continue; }
             for (const m of itens) {
-                let conteudo = m.texto || '';
-                if (s.store === 'memoria_recente') {
-                    const quem = m.role === 'user' ? 'Você' : 'IA';
-                    const corte = conteudo.length > 150 ? conteudo.substring(0, 150) + '…' : conteudo;
-                    conteudo = `${quem}: ${corte}`;
-                }
-                html += `<div class="mem-item">
-                    <input type="checkbox" class="chk-mem" data-store="${s.store}" data-id="${m.id}">
-                    <span class="mem-texto">${esc(conteudo)}</span>
-                    <button class="danger btn-apagar-um" data-store="${s.store}" data-id="${m.id}">Apagar</button>
-                </div>`;
+                h += `<div class="mem-item"><span class="mem-texto">${esc(m.texto)}</span>` +
+                    `<button class="danger btn-apagar-um" data-store="${s.store}" data-id="${m.id}">${t('del')}</button></div>`;
             }
         }
-
-        lista.innerHTML = html;
-        atualizarContadorSelecao();
+        $('lista-memorias').innerHTML = h;
     }
 
-    document.getElementById('lista-memorias').addEventListener('click', async (e) => {
-        const btn = e.target.closest('.btn-apagar-um');
-        if (!btn) return;
-        if (!confirm('Apagar esta memória?')) return;
-        await dbDelete(btn.dataset.store, Number(btn.dataset.id));
+    $('lista-memorias').addEventListener('click', async (e) => {
+        const b = e.target.closest('.btn-apagar-um');
+        if (!b || !confirm(t('delMem'))) return;
+        await dbDelete(b.dataset.store, Number(b.dataset.id));
         await renderizarMemorias();
     });
-
-    document.getElementById('lista-memorias').addEventListener('change', (e) => {
-        const alvo = e.target;
-        if (alvo.dataset.todas) {
-            document.querySelectorAll(`#lista-memorias .chk-mem[data-store="${alvo.dataset.todas}"]`)
-                .forEach(c => { c.checked = alvo.checked; });
-        }
-        atualizarContadorSelecao();
-    });
-
-    document.getElementById('btn-apagar-sel').addEventListener('click', async () => {
-        const marcadas = Array.from(document.querySelectorAll('#lista-memorias .chk-mem:checked'));
-        if (marcadas.length === 0) return;
-        if (!confirm(`Apagar ${marcadas.length} memória(s) selecionada(s)?`)) return;
-        for (const c of marcadas) {
-            await dbDelete(c.dataset.store, Number(c.dataset.id));
-        }
+    $('btn-abrir-memorias').onclick = async () => {
+        $('lista-memorias').innerHTML = `<p class="vazio">${t('loading')}</p>`;
+        $('modal-memorias').style.display = 'block';
         await renderizarMemorias();
-    });
-
-    document.getElementById('btn-abrir-memorias').addEventListener('click', async () => {
-        document.getElementById('lista-memorias').innerHTML = '<p class="vazio">Carregando...</p>';
-        document.getElementById('modal-memorias').style.display = 'block';
-        await renderizarMemorias();
-    });
-
-    document.getElementById('btn-fechar-memorias').addEventListener('click', () => {
-        document.getElementById('modal-memorias').style.display = 'none';
-    });
+    };
+    $('btn-fechar-memorias').onclick = () => { $('modal-memorias').style.display = 'none'; };
 
     // ==========================================
-    // INTERFACE: CONFIGURAÇÕES
+    // INTERFACE: EVENTOS E CONFIGURAÇÕES
     // ==========================================
-    document.getElementById('btn-enviar').addEventListener('click', enviarMensagem);
-    document.getElementById('user-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') enviarMensagem();
+    $('btn-enviar').onclick = enviarMensagem;
+    $('user-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') enviarMensagem(); });
+    $('btn-config').onclick = () => $('painel-config').classList.toggle('open');
+    $('btn-menu').onclick = () => { renderLista(); $('drawer').classList.add('open'); $('overlay').classList.add('open'); };
+    $('overlay').onclick = fecharDrawer;
+    $('btn-nova').onclick = async () => {
+        if (convAtual && !(await dbIdx('mensagens', 'conv', convAtual)).length) { fecharDrawer(); return; }
+        await novaConversa();
+    };
+    $('lista-conv').addEventListener('click', (e) => {
+        const row = e.target.closest('.conv');
+        if (!row) return;
+        const id = Number(row.dataset.id);
+        if (e.target.closest('.conv-r')) renomear(id);
+        else if (e.target.closest('.conv-d')) apagarConversa(id);
+        else abrirConversa(id);
     });
 
-    document.getElementById('btn-salvar-chave').addEventListener('click', () => {
-        const key = document.getElementById('api-key-input').value.trim();
-        if (key) {
-            API_KEY = key;
-            localStorage.setItem('viva_api_key', key);
-            alert('API Key salva!');
-        }
+    $('btn-mic').onclick = () => {
+        if (escutando) { rec && rec.stop(); }
+        else if (falando) pararFala();
+        else iniciarEscuta();
+    };
+    $('btn-anexo').onclick = () => $('input-arquivo').click();
+    $('input-arquivo').onchange = (e) => { anexar(Array.from(e.target.files)); e.target.value = ''; };
+    document.addEventListener('paste', (e) => {
+        const fs = Array.from(e.clipboardData?.files || []);
+        if (fs.length) { e.preventDefault(); anexar(fs); }
     });
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => { e.preventDefault(); anexar(Array.from(e.dataTransfer?.files || [])); });
 
-    document.getElementById('model-select').addEventListener('change', (e) => {
-        MODELO = e.target.value;
-        localStorage.setItem('viva_modelo', MODELO);
-    });
+    $('sel-lang').onchange = (e) => {
+        LANG = e.target.value === 'pt' ? 'pt' : 'en';
+        localStorage.setItem('chat_lang', LANG);
+        if (!localStorage.getItem('chat_voz_lang')) { VOZ_LANG = LANG === 'pt' ? 'pt-BR' : 'en-US'; $('sel-vozlang').value = VOZ_LANG; }
+        aplicarIdioma(); preencherVozes(); renderLista();
+    };
+    $('sel-vozlang').onchange = (e) => {
+        VOZ_LANG = e.target.value; VOZ_NOME = '';
+        localStorage.setItem('chat_voz_lang', VOZ_LANG); localStorage.removeItem('chat_voz_nome');
+        preencherVozes();
+    };
+    $('sel-voz').onchange = (e) => { VOZ_NOME = e.target.value; localStorage.setItem('chat_voz_nome', VOZ_NOME); };
+    $('rng-vel').oninput = (e) => {
+        VELOCIDADE = parseFloat(e.target.value);
+        $('val-vel').textContent = VELOCIDADE.toFixed(1) + 'x';
+        localStorage.setItem('chat_vel', String(VELOCIDADE));
+    };
+    $('rng-vel').onchange = () => falar(t('sample'));
+    $('chk-autoler').onchange = (e) => { AUTOLER = e.target.checked; localStorage.setItem('chat_autoler', AUTOLER ? '1' : '0'); };
+    $('chk-autoenviar').onchange = (e) => { AUTOENVIAR = e.target.checked; localStorage.setItem('chat_autoenviar', AUTOENVIAR ? '1' : '0'); };
+    $('chk-maos').onchange = (e) => { MAOS = e.target.checked; };
 
-    document.getElementById('rng-temperatura').addEventListener('input', (e) => {
+    $('btn-salvar-chave').onclick = () => {
+        const k = $('api-key-input').value.trim();
+        if (k) { API_KEY = k; localStorage.setItem('viva_api_key', k); alert(t('keySaved')); }
+    };
+    $('model-select').onchange = (e) => { MODELO = e.target.value; localStorage.setItem('viva_modelo', MODELO); };
+    $('rng-temperatura').oninput = (e) => {
         TEMPERATURA = parseFloat(e.target.value);
-        document.getElementById('val-temperatura').textContent = TEMPERATURA.toFixed(1);
+        $('val-temperatura').textContent = TEMPERATURA.toFixed(1);
         localStorage.setItem('viva_temperatura', String(TEMPERATURA));
-    });
-
-    document.getElementById('rng-contexto').addEventListener('input', (e) => {
+    };
+    $('rng-contexto').oninput = (e) => {
         CONTEXTO = parseInt(e.target.value, 10);
-        document.getElementById('val-contexto').textContent = CONTEXTO;
+        $('val-contexto').textContent = CONTEXTO;
         localStorage.setItem('viva_contexto', String(CONTEXTO));
-    });
+    };
 
-    document.getElementById('btn-editar-personalidade').addEventListener('click', () => {
-        document.getElementById('texto-personalidade').value = PERSONALIDADE;
-        document.getElementById('modal-personalidade').style.display = 'block';
-    });
+    $('btn-editar-personalidade').onclick = () => {
+        $('texto-personalidade').value = PERSONALIDADE;
+        $('modal-personalidade').style.display = 'block';
+    };
+    $('btn-salvar-personalidade').onclick = () => {
+        const n = $('texto-personalidade').value.trim();
+        if (!n) return;
+        PERSONALIDADE = n; localStorage.setItem('viva_personalidade', n);
+        alert(t('saved')); $('modal-personalidade').style.display = 'none';
+    };
+    $('btn-restaurar-personalidade').onclick = () => {
+        PERSONALIDADE = PERSONALIDADE_PADRAO; localStorage.removeItem('viva_personalidade');
+        $('texto-personalidade').value = PERSONALIDADE;
+    };
+    $('btn-fechar-personalidade').onclick = () => { $('modal-personalidade').style.display = 'none'; };
 
-    document.getElementById('btn-salvar-personalidade').addEventListener('click', () => {
-        const novo = document.getElementById('texto-personalidade').value.trim();
-        if (novo) {
-            PERSONALIDADE = novo;
-            localStorage.setItem('viva_personalidade', novo);
-            alert('Personalidade salva!');
-            document.getElementById('modal-personalidade').style.display = 'none';
-        }
-    });
+    $('btn-exportar').onclick = exportarTudo;
+    $('btn-importar').onclick = () => $('input-importar').click();
+    $('input-importar').onchange = (e) => {
+        const f = e.target.files[0];
+        if (f) { importarTudo(f); e.target.value = ''; }
+    };
 
-    document.getElementById('btn-fechar-personalidade').addEventListener('click', () => {
-        document.getElementById('modal-personalidade').style.display = 'none';
-    });
-
-    // Exportar / Importar
-    document.getElementById('btn-exportar').addEventListener('click', exportarMemorias);
-
-    document.getElementById('btn-importar').addEventListener('click', () => {
-        document.getElementById('input-importar').click();
-    });
-
-    document.getElementById('input-importar').addEventListener('change', (e) => {
-        const arquivo = e.target.files[0];
-        if (arquivo) {
-            importarMemorias(arquivo);
-            e.target.value = '';
-        }
-    });
-
-    // Inicialização
+    // ==========================================
+    // INICIALIZAÇÃO
+    // ==========================================
     window.addEventListener('load', async () => {
-        document.getElementById('api-key-input').value = API_KEY;
-        document.getElementById('model-select').value = MODELO;
-        document.getElementById('rng-temperatura').value = TEMPERATURA;
-        document.getElementById('val-temperatura').textContent = TEMPERATURA.toFixed(1);
-        document.getElementById('rng-contexto').value = CONTEXTO;
-        document.getElementById('val-contexto').textContent = CONTEXTO;
         await abrirDB();
+        if (!localStorage.getItem('chat_migrado')) {   // traz o buffer da versão 1 para uma conversa
+            const r = (await dbGetAll('memoria_recente')).sort((a, b) => a.id - b.id);
+            await importarRecentes(r);
+            await limparStore('memoria_recente');
+            localStorage.setItem('chat_migrado', '1');
+        }
+        $('sel-lang').value = LANG;
+        $('sel-vozlang').innerHTML = VOZES_LANG.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
+        $('sel-vozlang').value = VOZ_LANG;
+        $('api-key-input').value = API_KEY;
+        $('model-select').value = MODELO;
+        $('rng-temperatura').value = TEMPERATURA; $('val-temperatura').textContent = TEMPERATURA.toFixed(1);
+        $('rng-contexto').value = CONTEXTO; $('val-contexto').textContent = CONTEXTO;
+        $('rng-vel').value = VELOCIDADE; $('val-vel').textContent = VELOCIDADE.toFixed(1) + 'x';
+        $('chk-autoler').checked = AUTOLER; $('chk-autoenviar').checked = AUTOENVIAR;
+        aplicarIdioma();
+        if ('speechSynthesis' in window) { speechSynthesis.onvoiceschanged = preencherVozes; preencherVozes(); }
+
+        const cs = (await dbGetAll('conversas')).sort(porRecente);
+        const salva = Number(localStorage.getItem('chat_conv'));
+        if (!cs.length) await novaConversa();
+        else await abrirConversa(cs.some(c => c.id === salva) ? salva : cs[0].id);
     });
 
 </script>
