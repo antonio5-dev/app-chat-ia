@@ -266,7 +266,7 @@
         #drawer.open { transform: none; }
         #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 800; }
         #overlay.open { display: block; }
-        #lista-conv { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        #lista-conv { flex: 1; min-height: 60px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
         .conv { display: flex; align-items: center; gap: 6px; padding: 8px; border-radius: 8px; background: #2a2a2a; border: 1px solid #333; cursor: pointer; }
         .conv.ativa { border-color: #3b82f6; }
         .conv-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -274,6 +274,13 @@
         .cfg-linha { display: flex; align-items: center; gap: 8px; font-size: 15px; color: #d1d5db; width: 100%; }
         .cfg-linha input[type=checkbox] { width: 20px; height: 20px; padding: 0; flex-shrink: 0; accent-color: #3b82f6; }
         .rotulo { font-size: 13px; color: #9ca3af; width: 100%; }
+        #fila-box { border-top: 1px solid #333; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 0; max-height: 55%; }
+        #fila-toggle { text-align: left; }
+        #fila-corpo { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+        #fila-corpo:empty { display: none; }
+        .mem-acoes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .mem-acoes button { width: auto; padding: 6px 10px; font-size: 13px; }
+        .mem-texto small { color: #9ca3af; }
     </style>
 </head>
 
@@ -283,6 +290,10 @@
 <div id="drawer">
     <button id="btn-nova" data-i="newChat"></button>
     <div id="lista-conv"></div>
+    <div id="fila-box">
+        <button class="secondary" id="fila-toggle"></button>
+        <div id="fila-corpo"></div>
+    </div>
 </div>
 
 <div class="app-container">
@@ -296,6 +307,8 @@
     <div class="header-controls" id="painel-config">
         <div class="rotulo" data-i="uiLang"></div>
         <select id="sel-lang"><option value="en">English</option><option value="pt">Português</option></select>
+        <div class="rotulo" data-i="respLang"></div>
+        <select id="sel-resp"><option value="auto" data-i="respAuto"></option><option value="en">English</option><option value="pt">Português</option></select>
         <select id="model-select">
             <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
             <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
@@ -374,7 +387,7 @@
     // ==========================================
     const I18N = {
         en: {
-            install: 'Install app', newChat: '+ New chat', defaultTitle: 'New chat', uiLang: 'Interface language',
+            install: 'Install app', respLang: 'AI reply language', respAuto: 'Same as my message', queue: 'Not yet summarized', queueHint: "Deleting here only keeps a message out of memory; it stays in the chat.", queueWhere: 'Manage them in the ☰ menu.', selAll: 'Select all', delSel: 'Delete selected', delAll: 'Delete all', delQueueOne: 'Remove this message from the memory queue? It stays in the chat.', delSelConfirm: 'Delete {n} selected item(s)?', delAllConfirm: 'Delete ALL items in this list?', you: 'You', newChat: '+ New chat', defaultTitle: 'New chat', uiLang: 'Interface language',
             temperature: 'Temperature', context: 'Context (previous messages)', apiKeyPh: 'Paste your Gemini API key here',
             saveKey: 'Save key', keySaved: 'API key saved!', voiceLang: 'Voice language (mic + reading)', voice: 'Voice',
             defaultVoice: 'Default', speed: 'Speech speed', autoRead: 'Read replies aloud',
@@ -393,7 +406,7 @@
             importDone: 'Import complete!', saved: 'Saved!', sample: 'This is my voice at this speed.'
         },
         pt: {
-            install: 'Instalar app', newChat: '+ Nova conversa', defaultTitle: 'Nova conversa', uiLang: 'Idioma da interface',
+            install: 'Instalar app', respLang: 'Idioma das respostas da IA', respAuto: 'Igual à minha mensagem', queue: 'Ainda não resumidas', queueHint: 'Apagar aqui só tira a mensagem da memória; ela continua na conversa.', queueWhere: 'Gerencie no menu ☰.', selAll: 'Selecionar todas', delSel: 'Apagar selecionadas', delAll: 'Apagar todas', delQueueOne: 'Tirar esta mensagem da fila de memória? Ela continua na conversa.', delSelConfirm: 'Apagar {n} item(ns) selecionado(s)?', delAllConfirm: 'Apagar TODOS os itens desta lista?', you: 'Você', newChat: '+ Nova conversa', defaultTitle: 'Nova conversa', uiLang: 'Idioma da interface',
             temperature: 'Temperatura', context: 'Contexto (mensagens anteriores)', apiKeyPh: 'Cole sua API Key do Gemini aqui',
             saveKey: 'Salvar chave', keySaved: 'API Key salva!', voiceLang: 'Idioma da voz (microfone + leitura)', voice: 'Voz',
             defaultVoice: 'Padrão', speed: 'Velocidade da fala', autoRead: 'Ler respostas em voz alta',
@@ -442,6 +455,8 @@
     let AUTOLER = localStorage.getItem('chat_autoler') === '1';
     let AUTOENVIAR = localStorage.getItem('chat_autoenviar') !== '0';
     let MAOS = false;
+    let FILA_ABERTA = localStorage.getItem('chat_fila_aberta') === '1';
+    let RESP_LANG = localStorage.getItem('chat_resp') || 'auto';   // idioma das respostas da IA: auto | en | pt
 
     const DB_NAME = 'viva_memoria_db';
     const DB_VERSION = 2;
@@ -463,6 +478,7 @@
         document.title = LANG === 'pt' ? 'Chat de IA (Gemini)' : 'AI Chat (Gemini)';
         document.querySelectorAll('[data-i]').forEach(e => { e.textContent = t(e.dataset.i); });
         document.querySelectorAll('[data-ph]').forEach(e => { e.placeholder = t(e.dataset.ph); });
+        if (db) renderFila();
     }
 
     // ==========================================
@@ -746,6 +762,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             await dbDelete('mensagens', m.id);
         }
         await dbDelete('conversas', id);
+        renderFila();
         if (id === convAtual) {
             const cs = (await dbGetAll('conversas')).sort(porRecente);
             if (cs.length) await abrirConversa(cs[0].id); else await novaConversa();
@@ -985,8 +1002,11 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
     async function montarSistema() {
         const perfil = (await dbGetAll('perfil')).map(x => x.texto).join('\n');
         const perm = (await dbGetAll('memoria_permanente')).map(x => x.texto).join('\n');
+        const regra = RESP_LANG === 'en' ? 'Always reply in English.'
+            : RESP_LANG === 'pt' ? 'Always reply in Brazilian Portuguese (português do Brasil).'
+            : "Always reply in the same language as the user's latest message. The language of the profile, the memories, earlier replies or these instructions must NOT decide the reply language.";
         return `${PERSONALIDADE}\n\n--- USER PROFILE ---\n${perfil || '(none yet)'}\n\n` +
-            `--- PERMANENT MEMORIES (from all chats) ---\n${perm || '(none yet)'}\n\nReply in the language the user is writing in.`;
+            `--- PERMANENT MEMORIES (from all chats; they may be written in any language) ---\n${perm || '(none yet)'}\n\nLANGUAGE RULE: ${regra}`;
     }
 
     // Histórico da conversa aberta (últimas N mensagens). Anexos completos só nas 2 últimas mensagens que tiverem anexo.
@@ -1031,6 +1051,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
                 meta.push({ id, tipo: a.rec.tipo, nome: a.rec.nome, thumb: a.thumb });
             }
             await dbAdd('mensagens', { conversaId: convId, role: 'user', texto, anexos: meta, timestamp: new Date().toISOString(), processada: 0 });
+            renderFila();
             if (!$('chat-container').querySelector('.message:not(.aviso)')) $('chat-container').innerHTML = '';
             adicionarMensagem('user', texto, meta);
             await tocarConversa(convId, texto || (meta[0] && meta[0].nome));
@@ -1039,11 +1060,13 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             const resp = await chamarGemini(await montarContents(convId), { temperatura: TEMPERATURA, sistema: await montarSistema() });
             alvo.textContent = resp;
             await dbAdd('mensagens', { conversaId: convId, role: 'viva', texto: resp, anexos: [], timestamp: new Date().toISOString(), processada: 0 });
+            renderFila();
             await tocarConversa(convId, '');
             if ((AUTOLER || MAOS) && convAtual === convId) {
                 falar(resp, () => { if (MAOS && convAtual === convId) iniciarEscuta(); });
             }
             await manutencaoMemoria();
+            aposMudanca();
         } catch (e) {
             if (alvo) alvo.textContent = t('error') + e.message; else adicionarMensagem('aviso', t('error') + e.message);
         } finally { enviando = false; }
@@ -1057,26 +1080,111 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
         { store: 'perfil', tk: 'profile', limite: LIM_PERFIL }
     ];
 
-    async function renderizarMemorias() {
-        let h = '';
-        for (const s of SECOES_MEMORIA) {
-            const itens = await dbGetAll(s.store);
-            h += `<div class="sec-titulo"><h3>${t(s.tk)} (${itens.length}/${s.limite})</h3></div>`;
-            if (!itens.length) { h += `<p class="vazio">${t('none')}</p>`; continue; }
-            for (const m of itens) {
-                h += `<div class="mem-item"><span class="mem-texto">${esc(m.texto)}</span>` +
-                    `<button class="danger btn-apagar-um" data-store="${s.store}" data-id="${m.id}">${t('del')}</button></div>`;
-            }
-        }
-        $('lista-memorias').innerHTML = h;
+    // 'fila' = mensagens ainda não resumidas (de todas as conversas).
+    // Apagar da fila só tira a mensagem da memória (processada = 2): ela continua no histórico da conversa.
+    async function itensDe(store) {
+        if (store === 'fila') return (await dbIdx('mensagens', 'proc', 0)).sort((a, b) => a.id - b.id);
+        return (await dbGetAll(store)).sort((a, b) => a.id - b.id);
     }
 
-    $('lista-memorias').addEventListener('click', async (e) => {
-        const b = e.target.closest('.btn-apagar-um');
-        if (!b || !confirm(t('delMem'))) return;
-        await dbDelete(b.dataset.store, Number(b.dataset.id));
-        await renderizarMemorias();
-    });
+    async function removerItem(store, id) {
+        if (store === 'fila') {
+            const m = await dbGet('mensagens', id);
+            if (m) { m.processada = 2; await dbPut('mensagens', m); }
+        } else await dbDelete(store, id);
+    }
+
+    const extraFila = (store) => store === 'fila' ? '\n' + t('queueHint') : '';
+
+    // HTML de uma lista (ações + itens com checkbox e botão de apagar)
+    async function corpoSecao(store) {
+        const itens = await itensDe(store);
+        if (!itens.length) return { n: 0, html: `<p class="vazio">${t('none')}</p>` };
+        const titulos = store === 'fila' ? Object.fromEntries((await dbGetAll('conversas')).map(c => [c.id, c.titulo])) : {};
+        let h = `<div class="mem-acoes"><label class="sel-todas"><input type="checkbox" data-todas="${store}"> ${t('selAll')}</label>` +
+            `<button class="danger btn-del-sel" data-store="${store}" disabled>${t('delSel')} (0)</button>` +
+            `<button class="danger btn-del-todas" data-store="${store}">${t('delAll')}</button></div>`;
+        for (const m of itens) {
+            let txt = esc(m.texto || '');
+            if (store === 'fila') {
+                const corte = (m.texto || '').length > 120 ? m.texto.slice(0, 120) + '…' : (m.texto || '');
+                const anx = (m.anexos || []).map(a => ' 📎' + a.nome).join('');
+                txt = `<small>${esc(titulos[m.conversaId] || '')}</small><br>${m.role === 'user' ? t('you') : 'AI'}: ${esc(corte + anx)}`;
+            }
+            h += `<div class="mem-item"><input type="checkbox" class="chk-mem" data-store="${store}" data-id="${m.id}">` +
+                `<span class="mem-texto">${txt}</span>` +
+                `<button class="danger btn-del-um" data-store="${store}" data-id="${m.id}" title="${t('del')}">🗑</button></div>`;
+        }
+        return { n: itens.length, html: h };
+    }
+
+    function atualizarSel(root) {
+        root.querySelectorAll('.btn-del-sel').forEach(b => {
+            const n = root.querySelectorAll(`.chk-mem[data-store="${b.dataset.store}"]:checked`).length;
+            b.textContent = `${t('delSel')} (${n})`;
+            b.disabled = n === 0;
+        });
+    }
+
+    // Quadro "Ainda não resumidas" no menu lateral (contador sempre visível; lista só quando expandido)
+    async function renderFila() {
+        const n = (await dbIdx('mensagens', 'proc', 0)).length;
+        $('fila-toggle').textContent = `${FILA_ABERTA ? '▾' : '▸'} ${t('queue')} (${n}/${FILA_LIMITE})`;
+        const c = $('fila-corpo');
+        if (!FILA_ABERTA) { c.innerHTML = ''; return; }
+        c.innerHTML = `<p class="vazio">${t('queueHint')}</p>` + (await corpoSecao('fila')).html;
+        atualizarSel(c);
+    }
+
+    // Caixa de Memórias: contador da fila + Permanentes + Perfil
+    async function renderizarMemorias() {
+        const nf = (await dbIdx('mensagens', 'proc', 0)).length;
+        let h = `<div class="sec-titulo"><h3>${t('queue')}: ${nf}/${FILA_LIMITE}</h3></div><p class="vazio">${t('queueWhere')}</p>`;
+        for (const s of SECOES_MEMORIA) {
+            const r = await corpoSecao(s.store);
+            h += `<div class="sec-titulo"><h3>${t(s.tk)} (${r.n}/${s.limite})</h3></div>` + r.html;
+        }
+        const box = $('lista-memorias');
+        box.innerHTML = h;
+        atualizarSel(box);
+    }
+
+    async function aposMudanca() {
+        await renderFila();
+        if ($('modal-memorias').style.display === 'block') await renderizarMemorias();
+    }
+
+    // Seleção e exclusão (uma a uma, selecionadas ou todas) — vale para a fila, Permanentes e Perfil
+    function ligarMem(root) {
+        root.addEventListener('change', (e) => {
+            const a = e.target;
+            if (a.dataset.todas) root.querySelectorAll(`.chk-mem[data-store="${a.dataset.todas}"]`).forEach(c => { c.checked = a.checked; });
+            atualizarSel(root);
+        });
+        root.addEventListener('click', async (e) => {
+            const um = e.target.closest('.btn-del-um'), sel = e.target.closest('.btn-del-sel'), todas = e.target.closest('.btn-del-todas');
+            if (um) {
+                if (!confirm(um.dataset.store === 'fila' ? t('delQueueOne') : t('delMem'))) return;
+                await removerItem(um.dataset.store, Number(um.dataset.id));
+            } else if (sel) {
+                const ids = Array.from(root.querySelectorAll(`.chk-mem[data-store="${sel.dataset.store}"]:checked`)).map(c => Number(c.dataset.id));
+                if (!ids.length || !confirm(t('delSelConfirm').replace('{n}', ids.length) + extraFila(sel.dataset.store))) return;
+                for (const id of ids) await removerItem(sel.dataset.store, id);
+            } else if (todas) {
+                if (!confirm(t('delAllConfirm') + extraFila(todas.dataset.store))) return;
+                for (const m of await itensDe(todas.dataset.store)) await removerItem(todas.dataset.store, m.id);
+            } else return;
+            await aposMudanca();
+        });
+    }
+    ligarMem($('lista-memorias'));
+    ligarMem($('fila-corpo'));
+    $('fila-toggle').onclick = () => {
+        FILA_ABERTA = !FILA_ABERTA;
+        localStorage.setItem('chat_fila_aberta', FILA_ABERTA ? '1' : '0');
+        renderFila();
+    };
+
     $('btn-abrir-memorias').onclick = async () => {
         $('lista-memorias').innerHTML = `<p class="vazio">${t('loading')}</p>`;
         $('modal-memorias').style.display = 'block';
@@ -1090,7 +1198,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
     $('btn-enviar').onclick = enviarMensagem;
     $('user-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') enviarMensagem(); });
     $('btn-config').onclick = () => $('painel-config').classList.toggle('open');
-    $('btn-menu').onclick = () => { renderLista(); $('drawer').classList.add('open'); $('overlay').classList.add('open'); };
+    $('btn-menu').onclick = () => { renderLista(); renderFila(); $('drawer').classList.add('open'); $('overlay').classList.add('open'); };
     $('overlay').onclick = fecharDrawer;
     $('btn-nova').onclick = async () => {
         if (convAtual && !(await dbIdx('mensagens', 'conv', convAtual)).length) { fecharDrawer(); return; }
@@ -1125,6 +1233,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
         if (!localStorage.getItem('chat_voz_lang')) { VOZ_LANG = LANG === 'pt' ? 'pt-BR' : 'en-US'; $('sel-vozlang').value = VOZ_LANG; }
         aplicarIdioma(); preencherVozes(); renderLista();
     };
+    $('sel-resp').onchange = (e) => { RESP_LANG = e.target.value; localStorage.setItem('chat_resp', RESP_LANG); };
     $('sel-vozlang').onchange = (e) => {
         VOZ_LANG = e.target.value; VOZ_NOME = '';
         localStorage.setItem('chat_voz_lang', VOZ_LANG); localStorage.removeItem('chat_voz_nome');
@@ -1191,7 +1300,7 @@ ${it.map(m => '- ' + m.texto).join('\n')}`, { temperatura: 0.3, json: true });
             await limparStore('memoria_recente');
             localStorage.setItem('chat_migrado', '1');
         }
-        $('sel-lang').value = LANG;
+        $('sel-lang').value = LANG; $('sel-resp').value = RESP_LANG;
         $('sel-vozlang').innerHTML = VOZES_LANG.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
         $('sel-vozlang').value = VOZ_LANG;
         $('api-key-input').value = API_KEY;

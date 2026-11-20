@@ -1,5 +1,5 @@
 // Service Worker do Chat de IA (Gemini)
-const CACHE_NAME = 'chat-ia-cache-v6';
+const CACHE_NAME = 'chat-ia-cache-v8';
 const ASSETS = [
   './',
   './index.html',
