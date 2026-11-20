@@ -93,7 +93,7 @@ O que você precisa ter:
 
 ### Opção 1 — Usar o site na Vercel (mais fácil)
 
-1. Abra **https://SEU-APP.vercel.app** no Google Chrome, no PC ou no celular.
+1. Abra **https://app-viva-ia.vercel.app** no Google Chrome, no PC ou no celular.
 2. Celular: toque em **Instalar app** (ou menu ⋮ do Chrome → *Instalar app* / *Adicionar à tela inicial*). PC: clique no ícone de instalar na barra de endereço.
 3. Abra o app, coloque sua chave de API (veja *Primeiros passos*) e comece a conversar.
 
